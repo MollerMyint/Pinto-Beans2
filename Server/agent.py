@@ -18,6 +18,36 @@ load_dotenv() # load environment variables from .env file
 # These functions are decorated with @tool to make them available to the
 # LangChain agent. The agent can call these tools to perform specific tasks.
 
+_CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_corpus") # path to corpus
+
+
+@tool
+def search_corpus(query: str) -> str:
+    """Search CPP markdown corpus for phrase (case-insensitive). Returns short excerpts with filenames."""
+    q = (query or "").strip().lower() # strip whitespace and convert to lowercase
+    if not q:
+        return "Empty query."
+    hits = []
+    # iterate through corpus files
+    for name in sorted(os.listdir(_CORPUS)):
+        if not name.endswith(".md"):
+            continue
+        path = os.path.join(_CORPUS, name)
+        # open file and add filename and text to hits if query in file text
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+        except OSError:
+            continue
+        low = text.lower()
+        if q not in low:
+            continue
+        i = low.find(q) # find index of query in file text
+        hits.append(f"{name}: ...{text[max(0, i - 80) : i + len(q) + 120]}...") # excerpt consists of a max of 80 chars before query string and 120 chars after
+        if len(hits) >= 5: # limit to 5 hits
+            break
+    return "\n".join(hits) if hits else "No matches in corpus." # return hits as string
+
 
 def create_agent() -> AgentExecutor:
     """Create LangChain agent with tools."""
@@ -34,18 +64,13 @@ def create_agent() -> AgentExecutor:
         api_key=api_key
     )
 
-    # Define the tools
-    tools = []
+    tools = [search_corpus]
 
-    # Define prompt template
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful assistant for Cal Poly Pomona students."""),
-
-        # NEED TO IMPLEMENT TOOLS TO USE PROMPT BELOW
-        # ("system", """You are a helpful assistant for Cal Poly Pomona students.
-        # Use the search_corpus tool to find facts in the scraped website corpus (markdown under test_corpus).
-        # Base answers only on tool results; if searches find nothing relevant, say the answer cannot be found in the corpus.
-        # Keep a conversational tone and cite source URLs from the tool output when you use them."""),
+        ("system", """You are a helpful assistant for Cal Poly Pomona students.
+        Use the search_corpus tool to find facts in the scraped website corpus (markdown under test_corpus).
+        Base answers only on tool results; if searches find nothing relevant, say the answer cannot be found in the corpus.
+        Keep a conversational tone and cite source URLs from the tool output when you use them."""),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad")
