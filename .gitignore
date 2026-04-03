@@ -3,3 +3,6 @@ __pycache__/
 .env
 
 venv/
+
+Server/itc2026_ai_corpus
+Server/campus_kb.db

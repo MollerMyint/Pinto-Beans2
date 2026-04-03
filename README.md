@@ -52,3 +52,7 @@ python Server/preprocessing/build_index.py --corpus-dir ./Server/itc2026_ai_corp
 ```bash
 python Server/agent.py
 ```
+**OR if you want to see the difference in retrieval time between generic search and indexing:**
+```bash
+python Server/agent_test.py
+```
