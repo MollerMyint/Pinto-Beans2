@@ -87,6 +87,7 @@ def create_agent() -> AgentExecutor:
         handle_parsing_errors=True
     )
 
+    print("Agent created.")
     return agent_executor
 
 def main():
