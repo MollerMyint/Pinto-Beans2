@@ -9,3 +9,5 @@ node_modules/
 .venv/
 
 test_corpus/
+
+ca.pem
