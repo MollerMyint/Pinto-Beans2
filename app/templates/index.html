@@ -1,18 +1,32 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Search Page</title>
-    </head>
-    <body>
-        <h2>Ask a Question</h2>
-        <form method="POST" action="/ask">
-            <input type="text" name="corpus_question" placeholder="What do you want to know?">
-            <button type="submit">Submit</button>
-        </form>
+<head>
+    <title>Search Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">CPP AI Chatbot</div>
 
-        {% if answer %}
-            <h3>Answer:</h3>
-            <p>{{answer}}</p>
-        {% endif %}
-    </body>
+        <div class="chat-messages">
+            <div class="message bot-message">
+                Hi! Ask me a question.
+            </div>
+
+            {% if answer %}
+                <div class="message user-message">
+                    {{ request.form.get('corpus_question') }}
+                </div>
+                <div class="message bot-message">
+                    {{ answer }}
+                </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" action="/ask" class="chat-form">
+            <input type="text" name="corpus_question" placeholder="Type your question here...">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+</body>
 </html>
