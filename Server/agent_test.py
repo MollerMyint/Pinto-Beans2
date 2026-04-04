@@ -1,6 +1,7 @@
 # file to create chat agent to help students navigate website
 
 import os
+import time
 import sqlite3
 from pathlib import Path
 from dotenv import load_dotenv
@@ -13,14 +14,9 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 load_dotenv() # load environment variables from .env file
 
-# ============================================================================
-# LANGCHAIN TOOLS (TBD: IMPLEMENT THESE)
-# ============================================================================
-# These functions are decorated with @tool to make them available to the
-# LangChain agent. The agent can call these tools to perform specific tasks.
-
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "campus_kb.db"
+CORPUS_DIR = BASE_DIR / "itc2026_ai_corpus"  # raw .md files for brute-force search
 
 
 def get_conn():
@@ -52,24 +48,19 @@ def format_results(rows) -> str:
     return "\n\n".join(out)
 
 
-@tool
-def search_corpus(query: str) -> str:
-    """
-    Search the offline SQLite index of the CPP markdown corpus.
-    Returns top chunk-level matches with source attribution.
-    """
-    q = (query or "").strip().lower() # strip whitespace and convert to lowercase
+# METHOD 1 — SQLite FTS5 search 
+def _fts_search(query: str) -> tuple[str, float]:
+    q = (query or "").strip().lower()
     if not q:
-        return "Empty query."
+        return "Empty query.", 0.0
 
     if not DB_PATH.exists():
-        return "Database not found. Run build_index.py first."
+        return "Database not found. Run build_index.py first.", 0.0
 
     conn = get_conn()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
     match_query = " ".join(q.split())
-
     sql = """
         SELECT
             d.file_name,
@@ -84,6 +75,7 @@ def search_corpus(query: str) -> str:
         LIMIT 5
     """
 
+    start = time.perf_counter()
     try:
         cur.execute(sql, (match_query,))
         rows = cur.fetchall()
@@ -95,20 +87,102 @@ def search_corpus(query: str) -> str:
             rows = cur.fetchall()
         except sqlite3.OperationalError:
             rows = []
+    elapsed = time.perf_counter() - start
 
     conn.close()
-    return format_results(rows)
+    return format_results(rows), elapsed
+
+# METHOD 2 — Brute-force raw file search
+def _brute_force_search(query: str) -> tuple[str, float]:
+    q = (query or "").strip().lower()
+    if not q:
+        return "Empty query.", 0.0
+
+    if not CORPUS_DIR.exists():
+        return f"Corpus directory not found: {CORPUS_DIR}", 0.0
+
+    terms = [t for t in q.split() if t]
+    md_files = list(CORPUS_DIR.glob("*.md"))
+
+    matches: list[tuple[str, str, int]] = []  # (file_name, excerpt, match_count)
+
+    start = time.perf_counter()
+    for md_path in md_files:
+        try:
+            text = md_path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        text_lower = text.lower()
+        match_count = sum(text_lower.count(term) for term in terms)
+
+        if match_count == 0:
+            continue
+
+        # Find the first matching line for an excerpt
+        excerpt = ""
+        for line in text.splitlines():
+            if any(term in line.lower() for term in terms):
+                excerpt = line.strip()[:500]
+                break
+
+        matches.append((md_path.name, excerpt, match_count))
+
+    elapsed = time.perf_counter() - start
+
+    # Sort by most matches first, take top 5
+    matches.sort(key=lambda x: x[2], reverse=True)
+    top = matches[:5]
+
+    if not top:
+        return "No relevant matches found in the corpus.", elapsed
+
+    out = []
+    for i, (file_name, excerpt, count) in enumerate(top, start=1):
+        block = [
+            f"[Result {i}]",
+            f"File: {file_name}",
+            f"Keyword hits: {count}",
+            f"Excerpt: {excerpt or 'N/A'}",
+        ]
+        out.append("\n".join(block))
+
+    return "\n\n".join(out), elapsed
+
+# BENCHMARK — run both methods and print timing comparison
+def benchmark_search(query: str) -> str:
+    print("\n" + "=" * 60)
+    print(f"  BENCHMARK: '{query}'")
+    print("=" * 60)
+
+    fts_results,   fts_time   = _fts_search(query)
+    brute_results, brute_time = _brute_force_search(query)
+
+    speedup = brute_time / fts_time if fts_time > 0 else float("inf")
+
+    print(f"  SQLite FTS5  : {fts_time * 1000:.2f} ms")
+    print(f"  Brute-force  : {brute_time * 1000:.2f} ms")
+    print(f"  FTS is {speedup:.1f}x faster")
+    print("=" * 60 + "\n")
+
+    return fts_results  # agent uses the better result
+
+
+@tool
+def search_corpus(query: str) -> str:
+    """
+    Search the CPP campus knowledge base for information relevant to the query.
+    Runs both SQLite FTS and brute-force search, prints a timing comparison,
+    and returns the FTS results for the agent to use.
+    """
+    return benchmark_search(query)
 
 
 def create_agent() -> AgentExecutor:
-    """Create LangChain agent with tools."""
-
-    # Check for API key
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable not found. Please set it in your .env file.")
 
-    # Initialize the LLM
     llm = ChatOpenAI(
         model="gpt-4o-mini",
         temperature=0.2,
@@ -119,7 +193,7 @@ def create_agent() -> AgentExecutor:
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful assistant for Cal Poly Pomona students.
-        Use the search_corpus tool to find facts in the scraped website corpus (markdown under test_corpus).
+        Use the search_corpus tool to find facts in the scraped website corpus.
         Base answers only on tool results; if searches find nothing relevant, say the answer cannot be found in the corpus.
         Keep a conversational tone and cite source URLs from the tool output when you use them."""),
         MessagesPlaceholder(variable_name="chat_history"),
@@ -127,14 +201,12 @@ def create_agent() -> AgentExecutor:
         MessagesPlaceholder(variable_name="agent_scratchpad")
     ])
 
-    # Create the agent (uses the tools and prompt)
     agent = create_openai_tools_agent(llm, tools, prompt)
 
-    # Create executor (runs the agent)
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
-        verbose=False, # does not print verbose output
+        verbose=False,
         handle_parsing_errors=True
     )
 

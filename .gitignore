@@ -6,3 +6,5 @@ venv/
 cleaned/
 test_corpus/
 corpus/
+Server/itc2026_ai_corpus
+Server/campus_kb.db
