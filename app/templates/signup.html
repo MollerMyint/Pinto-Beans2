@@ -4,14 +4,15 @@
         <title>Search Page</title>
     </head>
     <body>
-        <h2>Welcome!</h2>
-        <h4>Please Log In</h4>
-        <form method="POST" action="/login">
+        <h2>New? Create an account!</h2>
+        <h4>Please Sign Up</h4>
+        <form method="POST" action="/signup">
             <input type="text" name="username" placeholder="Username">
+            <input type="email" name="email" placeholder="Email Address">
             <input type="password" name="password" placeholder="Password">
             <button type="submit">Submit</button>
-            <button type="button" onclick="location.href='/signup'">Sign Up</button>
         </form>
+        <button onclick="location.href='/login'" type="submit">Back</button>
         {% if error %}
             <p style="color: red;" >{{error}}</p>
         {%endif%}
