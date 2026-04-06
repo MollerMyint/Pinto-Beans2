@@ -10,3 +10,5 @@ agent/campus_kb.db
 .venv/
 
 ca.pem
+
+.DS_Store
