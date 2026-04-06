@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template
-from agent.agent import search_corpus
+from agent.agent import create_agent
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -47,10 +47,17 @@ def home():
 @app.route('/ask', methods=['POST'])
 def ask_question():
     question = request.form['corpus_question'] # get the data from the HTML form 
-    
+    chat_history = []
+
+    # Create a new agent to answer the question 
+    agent_executor = create_agent()
+
     # Use the function from agent.py to get the response
-    answer = search_corpus(question)
-    return render_template("index.html", answer=answer)
+    response = agent_executor.invoke({
+                "input": question,
+                "chat_history": chat_history
+    })
+    return render_template("index.html", answer=response['output'])
 
 @app.route('/login', methods=['GET','POST'])
 def login():
