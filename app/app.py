@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template
-import agent
+import search_corpus
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -49,7 +49,7 @@ def ask_question():
     question = request.form['corpus_question'] # get the data from the HTML form 
     
     # Use the function from agent.py to get the response
-    answer = agent.search_corpus(question)
+    answer = search_corpus(question)
     return render_template("index.html", answer=answer)
 
 @app.route('/login', methods=['GET','POST'])

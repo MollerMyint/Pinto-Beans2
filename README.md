@@ -41,10 +41,10 @@ This only needs to be done once (or again if the corpus changes).
 
 ```bash
 # Clean the raw markdown files (overwrites in place)
-python Server/preprocessing/clean_cpp_markdown.py --input-dir ./Server/itc2026_ai_corpus --output-dir ./Server/itc2026_ai_corpus
+python agent/preprocessing/clean_cpp_markdown.py --input-dir ./agent/itc2026_ai_corpus --output-dir ./agent/itc2026_ai_corpus
 
 # Build the SQLite search index
-python Server/preprocessing/build_index.py --corpus-dir ./Server/itc2026_ai_corpus --index ./Server/itc2026_ai_corpus/index.json --db ./Server/campus_kb.db
+python agent/preprocessing/build_index.py --corpus-dir ./agent/itc2026_ai_corpus --index ./agent/itc2026_ai_corpus/index.json --db ./agent/campus_kb.db
 ```
 ---
 

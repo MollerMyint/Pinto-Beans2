@@ -4,12 +4,9 @@ __pycache__/
 
 venv/
 
-Server/itc2026_ai_corpus
-Server/campus_kb.db
-node_modules/
+agent/itc2026_ai_corpus
+agent/campus_kb.db
 
 .venv/
-
-test_corpus/
 
 ca.pem
