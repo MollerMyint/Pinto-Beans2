@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template
-import search_corpus
+from agent.agent import search_corpus
 import mysql.connector
 from dotenv import load_dotenv
 import os

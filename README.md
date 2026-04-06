@@ -48,11 +48,22 @@ python agent/preprocessing/build_index.py --corpus-dir ./agent/itc2026_ai_corpus
 ```
 ---
 
-## 5. Run the Agent
+## 5.1. Run the Agent on the terminal
+
+Run these from the root directory with the virtual environment active.
+
 ```bash
-python Server/agent.py
+python agent/agent.py
 ```
 **OR if you want to see the difference in retrieval time between generic search and indexing:**
 ```bash
-python Server/agent_test.py
+python agent/agent_test.py
+```
+
+## 5.2. Run the Agent with UI
+
+Run this from the root directory with the virtual environment active.
+
+```bash
+python -m app.app
 ```
