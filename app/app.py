@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 from agent.agent import create_agent
 import mysql.connector
 from dotenv import load_dotenv
@@ -46,7 +46,8 @@ def home():
 # Tells the application which URL is associated with this function
 @app.route('/ask', methods=['POST'])
 def ask_question():
-    question = request.form['corpus_question'] # get the data from the HTML form 
+    data = request.get_json() # get the data from the HTML form 
+    question = data.get("corpus_question", "")
     chat_history = []
 
     # Create a new agent to answer the question 
@@ -57,7 +58,7 @@ def ask_question():
                 "input": question,
                 "chat_history": chat_history
     })
-    return render_template("index.html", answer=response['output'])
+    return jsonify({"answer":response['output']})
 
 @app.route('/login', methods=['GET','POST'])
 def login():

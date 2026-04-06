@@ -8,25 +8,77 @@
     <div class="chat-container">
         <div class="chat-header">CPP AI Chatbot</div>
 
-        <div class="chat-messages">
+        <div class="chat-messages" id="chat-messages">
             <div class="message bot-message">
                 Hi! Ask me a question.
             </div>
-
-            {% if answer %}
-                <div class="message user-message">
-                    {{ request.form.get('corpus_question') }}
-                </div>
-                <div class="message bot-message">
-                    {{ answer }}
-                </div>
-            {% endif %}
         </div>
 
-        <form method="POST" action="/ask" class="chat-form">
-            <input type="text" name="corpus_question" placeholder="Type your question here...">
+        <form id="chat-form" class="chat-form">
+            <input 
+                type="text"
+                id="corpus_question"
+                name="corpus_question"
+                placeholder="Type your question here..."
+                required>
             <button type="submit">Send</button>
         </form>
     </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const input = document.getElementById("corpus_question");
+        const chatMessages = document.getElementById("chat-messages");
+
+        form.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const question = input.value.trim();
+            if (!question) return;
+
+            // Show user's message
+            const userMessage = document.createElement("div");
+            userMessage.className = "message user-message";
+            userMessage.textContent = question;
+            chatMessages.appendChild(userMessage);
+
+            // Show loading message
+            const loadingMessage = document.createElement("div");
+            loadingMessage.className = "message bot-message";
+            loadingMessage.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>Thinking...</span>
+                </div>
+            `;
+            chatMessages.appendChild(loadingMessage);
+
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Clear input
+            input.value = "";
+
+            try {
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ corpus_question: question })
+                });
+
+                const data = await response.json();
+
+                // Replace loading with actual answer
+                loadingMessage.textContent = data.answer;
+            } catch (error) {
+                loadingMessage.textContent = "Something went wrong. Please try again.";
+                console.error(error);
+            }
+
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    </script>
 </body>
 </html>
