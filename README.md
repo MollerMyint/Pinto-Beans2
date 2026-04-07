@@ -45,6 +45,11 @@ python agent/preprocessing/clean_cpp_markdown.py --input-dir ./agent/itc2026_ai_
 
 # Build the SQLite search index
 python agent/preprocessing/build_index.py --corpus-dir ./agent/itc2026_ai_corpus --index ./agent/itc2026_ai_corpus/index.json --db ./agent/campus_kb.db
+
+# start creating table of vector embeddings for each chunk (this command will stop partway because it hits the rate limit)
+python agent/preprocessing/create_vectors.py --db agent/campus_kb.db
+# when the command raises a BadRequestError rerun the script with a smaller batch size (256)
+python agent/preprocessing/create_vectors.py --db agent/campus_kb.db --batch-size 256
 ```
 ---
 
