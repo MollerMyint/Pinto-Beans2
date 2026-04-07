@@ -6,6 +6,8 @@ venv/
 
 agent/itc2026_ai_corpus
 agent/campus_kb.db
+agent/campus_kb.db-shm
+agent/campus_kb.db-wal
 
 .venv/
 
