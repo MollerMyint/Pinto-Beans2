@@ -94,7 +94,8 @@ button.secondary:hover {
 
 /* Error message */
 .error {
-    margin-top: 15px;
+    /* margin-top: 5px; */
+    margin-bottom: 13px;
     color: #f87171;
     font-size: 14px;
 }

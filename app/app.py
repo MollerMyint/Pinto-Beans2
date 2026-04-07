@@ -4,6 +4,7 @@ import mysql.connector
 from dotenv import load_dotenv
 import os
 import hashlib
+import re
 
 # Flask constructor 
 app = Flask(__name__)
@@ -88,6 +89,27 @@ def signup():
             email = request.form['email']
             password = request.form['password']
 
+            mycursor.execute("SELECT username, emailaddress FROM users WHERE username = %s OR emailaddress = %s", (username, email))
+            existing = mycursor.fetchall()
+
+            username_error = None
+            email_error = None
+
+            # check for dupilcate username or email
+            for row in existing:
+                if row[0] == username:
+                    username_error = "That username is already taken."
+                if row[1] == email:
+                    email_error = "An account with that email already exists."
+
+            # validate email format
+            if not is_valid_email(email):
+                email_error = "Please enter a valid email address."
+
+            if username_error or email_error:
+                # pass back username and email so fields dont clear when error is present
+                return render_template("signup.html",username_error=username_error, email_error=email_error, username=username, email=email)
+            
             # hash the password for added security
             password = hashPassword(password)
 
@@ -100,7 +122,8 @@ def signup():
             return render_template("index.html")
         except Exception as e: 
             # If there's an issue, stay on the signup page until it works
-            return render_template("signup.html", error="Soemthing went wrong, please try again.")
+            print("Signup error:", e)
+            return render_template("signup.html", error="Something went wrong, please try again.")
     return render_template("signup.html")
 
 # Helper functions 
@@ -108,6 +131,10 @@ def hashPassword(plainText):
     pwd_salt = plainText+s
     hashed = hashlib.sha256(pwd_salt.encode()).hexdigest()
     return hashed
+
+def is_valid_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
 
 def main():
     print("Starting Flask server...")
