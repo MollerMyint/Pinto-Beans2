@@ -1,7 +1,7 @@
 """
-create_vectors.py
+openai_vectors.py
 
-Create vectors for each chunk in SQLite database.
+Create vectors for each chunk in SQLite database using OpenAI's embedding model
 
 What it does:
   1. Reads each chunk from SQLite database
