@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, jsonify
+from langchain_core.messages import HumanMessage, AIMessage
 from agent.agent import create_agent
 import mysql.connector
 from dotenv import load_dotenv
@@ -48,18 +49,68 @@ def home():
 @app.route('/ask', methods=['POST'])
 def ask_question():
     data = request.get_json() # get the data from the HTML form 
-    question = data.get("corpus_question", "")
-    chat_history = []
+    question = data.get("question")
+    chat_id = data.get("chat_id")
 
-    # Create a new agent to answer the question 
-    agent_executor = create_agent()
+    if not chat_id:
+        return jsonify({"error": "No chat ID provided."}), 400
+    
+    mycursor.execute("SELECT question, answer FROM messages WHERE chat_id = %s ORDER BY message_id ASC", (chat_id,))
+    rows = mycursor.fetchall()
+    print("rows: ", rows)
 
-    # Use the function from agent.py to get the response
-    response = agent_executor.invoke({
-                "input": question,
-                "chat_history": chat_history
-    })
-    return jsonify({"answer":response['output']})
+    chat_history = [] # rebuild chat history for agent
+    for ques, answ in rows:
+        chat_history.append(HumanMessage(content=ques))
+        chat_history.append(AIMessage(content=answ))
+
+    agent_executor = create_agent()  # Create a new agent to answer the question 
+
+    response = agent_executor.invoke({"input": question, "chat_history": chat_history})  # Use the function from agent.py to get the response
+    answer = response['output']
+
+    # save the new Q&A to the messages table
+    mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)", (chat_id, question, answer))
+    mydb.commit()
+
+    return jsonify({"answer": answer, "chat_id": chat_id})
+
+@app.route('/new/chat', methods=['POST'])
+def new_chat():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    title = data.get("title")
+
+    mycursor.execute("INSERT INTO chats (user_id, title) VALUES (%s, %s)", (user_id, title))
+    mydb.commit()  # Save the new row in the database
+    chat_id = mycursor.lastrowid  # get the ID of the newly created chat
+
+    return jsonify({"chat_id":chat_id})
+
+# return all of the chats that belong to a user
+@app.route('/user/chats/<int:user_id>', methods=['GET'])
+def get_chats(user_id):
+    mycursor.execute("SELECT chat_id, title, created_at FROM chats WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
+    rows = mycursor.fetchall()
+
+    chats = []
+    for row in rows:
+        chats.append({"chat_id": row[0], "title": row[1], "created_at": str(row[2])})
+    
+    return jsonify({"user_id": user_id, "chats": chats})
+
+# returns all of the messages that belong to a chat
+@app.route('/chats/<int:chat_id>/messages', methods=['GET'])
+def get_messages(chat_id):
+    mycursor.execute("SELECT message_id, question, answer FROM messages WHERE chat_id = %s ORDER BY message_id ASC", (chat_id,))
+    rows = mycursor.fetchall()
+    print(rows)
+
+    messages = []
+    for row in rows:
+        messages.append({"message_id": row[0], "question": row[1], "answer": row[2]})
+    
+    return jsonify({"chat_id": chat_id, "messages": messages})
 
 @app.route('/login', methods=['GET','POST'])
 def login():
