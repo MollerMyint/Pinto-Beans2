@@ -1,34 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Search Page</title>
+    <title>BillyBean Bot</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">CPP AI Chatbot</div>
+    <div class="app-container">
+        <!--Code for side bar-->
+        <div class = "sidebar">
+            <div class = "sidebar-header">
+                <img src = "https://via.placeholder.com/40" alt="Logo" class="logo">
+                <span class = "app-name">BillyBean Bot</span>
+            </div>
 
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot-message">
-                Hi! Ask me a question.
+            <button class = "new-chat-btn" id = "new-chat-btn">
+                <span> New Chat +</span>
+            </button>
+
+            <div class = "chat-history" id="chat-history">
+                <!--Hard coded values for now, not populated w db for now-->
+                <div class = "chat-history-item active"> Chat Name 1</div>
+                <div class = "chat-history-item"> Chat Name 2</div>
+                <div class = "chat-history-item"> Chat Name 3</div>
+                <div class = "chat-history-item"> Chat Name 4</div>
+                <div class = "chat-history-item"> Chat Name 5</div>
             </div>
         </div>
 
-        <form id="chat-form" class="chat-form">
-            <input 
-                type="text"
-                id="corpus_question"
-                name="corpus_question"
-                placeholder="Type your question here..."
-                required>
-            <button type="submit">Send</button>
-        </form>
+        <!--Main Chat Box-->
+        <div class="chat-container">
+            <div class="chat-header">BillyBean Bot</div>
+
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot-message">
+                    Hi! Ask me a question.
+                </div>
+            </div>
+
+            <form id="chat-form" class="chat-form">
+                <input 
+                    type="text"
+                    id="corpus_question"
+                    name="corpus_question"
+                    placeholder="Type your question here..."
+                    required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
     </div>
 
     <script>
         const form = document.getElementById("chat-form");
         const input = document.getElementById("corpus_question");
         const chatMessages = document.getElementById("chat-messages");
+        const newChatBtn = document.getElementById("new-chat-btn");
+        const chatHistory = document.getElementById("chat-history");
+
+        // New chat button functionality
+        newChatBtn.addEventListener("click", function() {
+            // Clear chat messages
+            chatMessages.innerHTML = `
+                <div class="message bot-message">
+                    Hi! Ask me a question.
+                </div>
+            `;
+            
+            // Remove active class from all history items
+            document.querySelectorAll('.chat-history-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        });
+
+        // Chat history click functionality
+        chatHistory.addEventListener("click", function(e) {
+            if (e.target.classList.contains('chat-history-item')) {
+                // Remove active from all
+                document.querySelectorAll('.chat-history-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                // Add active to clicked
+                e.target.classList.add('active');
+            }
+        });
 
         form.addEventListener("submit", async function(e) {
             e.preventDefault();
