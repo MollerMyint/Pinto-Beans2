@@ -41,18 +41,33 @@ This only needs to be done once (or again if the corpus changes).
 
 ```bash
 # Clean the raw markdown files (overwrites in place)
-python Server/preprocessing/clean_cpp_markdown.py --input-dir ./Server/itc2026_ai_corpus --output-dir ./Server/itc2026_ai_corpus
+python agent/preprocessing/clean_cpp_markdown.py --input-dir ./agent/itc2026_ai_corpus --output-dir ./agent/itc2026_ai_corpus
 
 # Build the SQLite search index
-python Server/preprocessing/build_index.py --corpus-dir ./Server/itc2026_ai_corpus --index ./Server/itc2026_ai_corpus/index.json --db ./Server/campus_kb.db
+python agent/preprocessing/build_index.py --corpus-dir ./agent/itc2026_ai_corpus --index ./agent/itc2026_ai_corpus/index.json --db ./agent/campus_kb.db
+
+# start creating table of vector embeddings for each chunk (use SBERT instead of the OpenAI model)
+# if your local machine can handle a larger batch size, you can include that size in the arguments (ie: --batch-size 256)
+python agent/preprocessing/sbert_vectors.py --db agent/campus_kb.db
 ```
 ---
 
-## 5. Run the Agent
+## 5.1. Run the Agent on the terminal
+
+Run these from the root directory with the virtual environment active.
+
 ```bash
-python Server/agent.py
+python agent/agent.py
 ```
 **OR if you want to see the difference in retrieval time between generic search and indexing:**
 ```bash
-python Server/agent_test.py
+python agent/agent_test.py
+```
+
+## 5.2. Run the Agent with UI
+
+Run this from the root directory with the virtual environment active.
+
+```bash
+python -m app.app
 ```

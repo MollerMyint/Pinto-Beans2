@@ -8,3 +8,14 @@ test_corpus/
 corpus/
 Server/itc2026_ai_corpus
 Server/campus_kb.db
+
+agent/itc2026_ai_corpus
+agent/campus_kb.db
+agent/campus_kb.db-shm
+agent/campus_kb.db-wal
+
+.venv/
+
+ca.pem
+
+.DS_Store

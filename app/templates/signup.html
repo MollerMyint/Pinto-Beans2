@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Search Page</title>
+        <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
+    </head>
+    <body>
+        <div class='auth-container'>
+            <h2>New? Create an account!</h2>
+            <h4>Please fill in your information</h4>
+            <form method="POST" action="/signup">
+                <input type="text" name="username" placeholder="Username" value="{{ username or '' }}">
+                {% if username_error %}
+                    <p class="error" >{{username_error}}</p>
+                {%endif%}
+                <input type="text" name="email" placeholder="Email Address" value="{{ email or '' }}">
+                {% if email_error %}
+                    <p class="error" >{{email_error}}</p>
+                {%endif%}
+                <input type="password" name="password" placeholder="Password">
+                <button type="submit">Submit</button>
+            </form>
+            <button class="secondary" onclick="location.href='/login'" type="submit">Back</button>
+            {% if error %}
+                <p class="error" >{{error}}</p>
+            {%endif%}
+        </div>
+    </body>
+</html>
