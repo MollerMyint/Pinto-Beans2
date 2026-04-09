@@ -138,8 +138,6 @@
     const chatHistory = document.getElementById("chat-history");
     const chatHeader = document.querySelector(".chat-header");
 
-    // temp hardcoded
-    let currentUserId = 18;
     let currentChatId = null;
 
     // Rename/delete popup elements
@@ -157,7 +155,7 @@
     // Load chats on page load
     async function loadUserChats() {
         try {
-            const response = await fetch(`/user/chats/${currentUserId}`);
+            const response = await fetch(`/user/chats`);
             const data = await response.json();
             
             chatHistory.innerHTML = '';
@@ -274,7 +272,6 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: currentUserId,
                     title: 'New Chat'
                 })
             });

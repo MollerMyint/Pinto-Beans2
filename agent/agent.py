@@ -404,8 +404,6 @@ def create_agent(*, return_intermediate_steps: bool = True) -> AgentExecutor:
         - The title should be on its own line.
         - The format should be: "**<title>**"
 
-        At the start of a new conversation, greet the user briefly and simply: “Hi! I can help you find information about Cal Poly Pomona. What would you like to know?”
-
         You may use these tools:
         - search_corpus
         - semantic_search_sbert
