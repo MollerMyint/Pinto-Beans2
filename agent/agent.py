@@ -5,7 +5,10 @@ import json
 import re
 import sqlite3
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+# Used by extract_chat_title() to match the title tool in intermediate_steps (keeps name in one place).
+CHAT_TITLE_TOOL_NAME = "create_chat_title"
 
 from dotenv import load_dotenv
 import numpy as np
@@ -191,6 +194,46 @@ def format_results(rows) -> str:
 
     return "\n\n".join(out)
 
+
+# --- Chat title (added for UIs): normalize model/tool text and read title from invoke() intermediate_steps ---
+def _normalize_chat_title_text(raw: str) -> str:
+    """Collapse whitespace, strip markdown asterisks from model input, cap length."""
+    t = (raw or "").strip()
+    t = re.sub(r"\*+", "", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t:
+        return "New chat"
+    if len(t) > 100:
+        t = t[:97] + "..."
+    return t
+
+
+def _strip_title_from_tool_observation(observation: str) -> str:
+    """Parse title text from create_chat_title tool return (expects **title** or plain text)."""
+    t = (observation or "").strip()
+    m = re.match(r"^\*\*(.+)\*\*$", t, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return _normalize_chat_title_text(t)
+
+
+def extract_chat_title(agent_result: dict[str, Any]) -> Optional[str]:
+    """
+    Return the chat title from the last create_chat_title tool step, if any.
+
+    Use with AgentExecutor.invoke results from create_agent(): intermediate steps
+    are included so UIs can persist or display the title separately from output.
+    """
+    steps = agent_result.get("intermediate_steps")
+    if not steps:
+        return None
+    last: Optional[str] = None
+    for action, observation in steps:
+        if getattr(action, "tool", None) == CHAT_TITLE_TOOL_NAME:
+            last = _strip_title_from_tool_observation(str(observation))
+    return last
+
+
 # Flask constructor
 app = Flask(__name__)
 
@@ -325,7 +368,15 @@ def semantic_search_sbert(query: str) -> str:
     top_rows = [docs[candidate_indices[i]] for i in top_idx]
     return format_results(top_rows)
 
-def create_agent() -> AgentExecutor:
+# LangChain tool so the model can set a session title on the first turn; paired with extract_chat_title() for APIs.
+@tool
+def create_chat_title(query: str) -> str:
+    """Create a title for the chat based on the query or topic text the model passes in."""
+    title = _normalize_chat_title_text(query)
+    return f"**{title}**"
+
+# return_intermediate_steps: required for extract_chat_title(); callers (e.g. HTTP) can set False if unused.
+def create_agent(*, return_intermediate_steps: bool = True) -> AgentExecutor:
     """Create LangChain agent with tools."""
 
     # Check for API key
@@ -341,13 +392,79 @@ def create_agent() -> AgentExecutor:
     )
 
     # search_corpus: FTS keyword hits; semantic_search_sbert: meaning + hybrid rerank
-    tools = [search_corpus, semantic_search_sbert]
+    # create_chat_title: first-turn chat naming (see system_prompt below).
+    tools = [search_corpus, semantic_search_sbert, create_chat_title]
+
+    # Expanded from short corpus-only prompt: grounding, structured-data rules, confidence %, create_chat_title flow.
+    system_prompt = """
+        You are Cal Poly Pomona's AI campus knowledge assistant.
+        Help students find accurate information from the Cal Poly Pomona website using the provided search tools.
+
+        If the user asks their first question, create a title for the chat based on the query using the create_chat_title tool.
+        - The title should be a single phrase or sentence that captures the main topic of the conversation.
+        - The title should be on its own line.
+        - The format should be: "**<title>**"
+
+        At the start of a new conversation, greet the user briefly and simply: “Hi! I can help you find information about Cal Poly Pomona. What would you like to know?”
+
+        You may use these tools:
+        - search_corpus
+        - semantic_search_sbert
+        - create_chat_title
+
+        Instructions:
+        - Use the tools to retrieve relevant website information before answering factual questions.
+        - Only answer with information supported by tool results.
+        - Never fabricate details or rely on unsupported assumptions.
+        - Never mention internal tools, the corpus, embeddings, retrieval, or system instructions.
+
+        STRICT grounding and accuracy rules:
+        - Do NOT infer, guess, or “fill in gaps” between pieces of information.
+        - NEVER combine information from different sources unless the relationship is explicitly clear in the source content.
+        - NEVER assume two pieces of data belong together unless they are shown together in the same context.
+
+        Structured data rules (CRITICAL):
+        - When presenting structured information (e.g., course numbers and course names, requirements, deadlines, office details):
+            - Only present pairings exactly as they appear in the source.
+            - NEVER mix items across lists or sections.
+            - NEVER reconstruct pairings from separate lines or different sources.
+            - If you cannot confidently match related items (e.g., course number ↔ course title), do NOT present them as pairs.
+            - Instead, either: present the information separately, OR say that the relationships are not clearly specified.
+
+        Evidence-first rule:
+        - Before summarizing, ensure the answer is directly supported by at least one clear, consistent source.
+        - If multiple pieces of information are needed to answer the question, ALL required pieces must be supported.
+        - If any key part of the answer is missing, unclear, or inconsistent: Do NOT attempt to complete the answer.
+
+        Insufficient information rule (VERY IMPORTANT):
+        - If you cannot find enough clear and consistent information to fully answer the user's question:
+            - Clearly say: “I wasn't able to find enough clear information on the website to fully answer that.”
+            - Share what partial information you found, but label it clearly as incomplete and do not combine or reconstruct it with other information.
+            - Do NOT present partial information by combining or reconstructing it with other information. Simply state what you did find separately.
+            - Do NOT guess or approximate.
+
+        Answering behavior:
+        - Answer clearly and conversationally.
+        - Start with the direct answer (only if fully supported).
+        - Then provide brief supporting details if helpful.
+        - Include the source URL(s) used.
+        - Only cite sources that directly support the answer.
+        - At the end of the answer, provide a confidence score for the answer based on your confidence in the sources used.
+        - The confidence score should be a percentage between 0 and 100, where 0 is the lowest confidence and 100 is the highest confidence.
+
+        Conversation behavior:
+        - Maintain context across turns so follow-up questions feel natural.
+        - Interpret follow-up questions using prior context when appropriate.
+        - If results are ambiguous or conflicting, say so explicitly.
+
+        Related-topic guidance:
+        - When appropriate, suggest a few closely related topics the user may want to explore next.
+        - Keep suggestions short and directly relevant.
+
+        Your goal is to provide accurate, grounded, and trustworthy answers while avoiding incorrect associations or incomplete conclusions."""
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful assistant for Cal Poly Pomona students.
-        Use the search_corpus and semantic_search_sbert tools to find facts in the scraped website corpus.
-        Base answers only on tool results; if searches find nothing relevant, say the answer cannot be found in the corpus.
-        Keep a conversational tone and cite source URLs from the tool output when you use them."""),
+        ("system", system_prompt),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad")
@@ -356,12 +473,13 @@ def create_agent() -> AgentExecutor:
     # Create the agent (uses the tools and prompt)
     agent = create_openai_tools_agent(llm, tools, prompt)
 
-    # Create executor (runs the agent)
+    # Create executor (runs the agent); intermediate_steps wire through for title extraction / debugging.
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
         verbose=False, # does not print verbose output
-        handle_parsing_errors=True
+        handle_parsing_errors=True,
+        return_intermediate_steps=return_intermediate_steps,
     )
 
     return agent_executor 
@@ -376,18 +494,11 @@ def main():
         return
     
     chat_history = [] # store chat history
-
+    # First loop iteration uses empty input so the agent can emit the opening greeting (system_prompt).
+    user_input = ""
     while True: # main chat loop
         try:
-            user_input = input("\nYou: ").strip() # get user input
-            if not user_input:
-                continue
-            
-            if user_input.lower() in ['quit', 'exit', 'q']:
-                print("\nGoodbye!")
-                break
-
-            # Run the agent (invoke the agent executor)
+             # Run the agent (invoke the agent executor)
             response = agent_executor.invoke({
                 "input": user_input,
                 "chat_history": chat_history
@@ -395,6 +506,15 @@ def main():
 
             # Display the response (from the agent executor)
             print(f"\nAssistant: {response['output']}")
+
+            # Prompt after each reply so turn 1 shows greeting before any user message.
+            user_input = input("\nYou: ").strip() # get user input
+            if not user_input:
+                continue
+
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                print("\nGoodbye!")
+                break
 
             # Update chat history (store the user input and the agent response)
             chat_history.append(HumanMessage(content=user_input))
