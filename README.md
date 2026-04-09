@@ -45,6 +45,10 @@ python agent/preprocessing/clean_cpp_markdown.py --input-dir ./agent/itc2026_ai_
 
 # Build the SQLite search index
 python agent/preprocessing/build_index.py --corpus-dir ./agent/itc2026_ai_corpus --index ./agent/itc2026_ai_corpus/index.json --db ./agent/campus_kb.db
+
+# start creating table of vector embeddings for each chunk (use SBERT instead of the OpenAI model)
+# if your local machine can handle a larger batch size, you can include that size in the arguments (ie: --batch-size 256)
+python agent/preprocessing/sbert_vectors.py --db agent/campus_kb.db
 ```
 ---
 
