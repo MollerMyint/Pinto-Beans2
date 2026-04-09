@@ -238,7 +238,6 @@ def extract_chat_title(agent_result: dict[str, Any]) -> Optional[str]:
 app = Flask(__name__)
 
 @tool
-@app.route('/ask', methods=['POST'])
 def search_corpus(query: str) -> str:
     """
     Search the offline SQLite index of the CPP markdown corpus.
