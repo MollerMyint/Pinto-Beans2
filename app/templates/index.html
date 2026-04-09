@@ -18,68 +18,8 @@
                 <span> New Chat +</span>
             </button>
 
-            <div class = "chat-history" id="chat-history">
-                <!--Hard coded values for now, not populated w db for now-->
-                <div class = "chat-history-item active" data-chat-id="1">
-                    <span class="chat-name">Chat Name 1</span>
-                    <button class="chat-options-btn">⋮</button>
-                    <div class="chat-options-menu">
-                        <button class="option-rename">
-                            Rename
-                        </button>
-                        <button class="option-delete">
-                            Delete
-                        </button>
-                    </div>
-                </div>
-                <div class = "chat-history-item" data-chat-id="2">
-                    <span class="chat-name">Chat Name 2</span>
-                    <button class="chat-options-btn">⋮</button>
-                    <div class="chat-options-menu">
-                        <button class="option-rename">
-                            Rename
-                        </button>
-                        <button class="option-delete">
-                            Delete
-                        </button>
-                    </div>
-                </div>
-                <div class = "chat-history-item" data-chat-id="3">
-                    <span class="chat-name">Chat Name 3</span>
-                    <button class="chat-options-btn">⋮</button>
-                    <div class="chat-options-menu">
-                        <button class="option-rename">
-                            Rename
-                        </button>
-                        <button class="option-delete">
-                            Delete
-                        </button>
-                    </div>
-                </div>
-                <div class = "chat-history-item" data-chat-id="4">
-                    <span class="chat-name">Chat Name 4</span>
-                    <button class="chat-options-btn">⋮</button>
-                    <div class="chat-options-menu">
-                        <button class="option-rename">
-                            Rename
-                        </button>
-                        <button class="option-delete">
-                            Delete
-                        </button>
-                    </div>
-                </div>
-                <div class = "chat-history-item" data-chat-id="5">
-                    <span class="chat-name">Chat Name 5</span>
-                    <button class="chat-options-btn">⋮</button>
-                    <div class="chat-options-menu">
-                        <button class="option-rename">
-                            Rename
-                        </button>
-                        <button class="option-delete">
-                            Delete
-                        </button>
-                    </div>
-                </div>
+            <div class="chat-history" id="chat-history">
+            <!-- Will later load chats from database -->
             </div>
         </div>
 
@@ -166,8 +106,14 @@
                 addChatToSidebar(chat.chat_id, chat.title);
             });
             
+            // Only load first chat if chats exist
             if (data.chats.length > 0) {
                 loadChat(data.chats[0].chat_id, data.chats[0].title);
+            } else {
+                // Show welcome message if no chats exist
+                chatMessages.innerHTML = '';
+                addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+                chatHeader.textContent = 'BillyBeans Bot';
             }
         } catch (error) {
             console.error('Error loading chats:', error);
@@ -188,6 +134,23 @@
         `;
         chatHistory.appendChild(chatItem);
         attachChatItemListeners(chatItem);
+    }
+
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        
+        // URL detection
+        const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
+        
+        const linkedText = text.replace(urlRegex, function(match, url, punctuation) {
+            // Disinclude trailing puncuation to not alter link
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
+        });
+        
+        messageDiv.innerHTML = linkedText;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function attachChatItemListeners(chatItem) {
@@ -253,19 +216,11 @@
             });
             
             if (data.messages.length === 0) {
-                addMessage('Welcome to BillyBeans Bot! Ask me a question.', 'bot');
+                addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
             }
         } catch (error) {
             console.error('Error loading messages:', error);
         }
-    }
-
-    function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
-        messageDiv.textContent = text;
-        chatMessages.appendChild(messageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     newChatBtn.addEventListener('click', async function() {
@@ -285,7 +240,7 @@
             addChatToSidebar(data.chat_id, 'New Chat');
             
             chatMessages.innerHTML = '';
-            addMessage('Hi! Ask me a question.', 'bot');
+            addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
             
             chatHeader.textContent = 'New Chat';
             
@@ -310,7 +265,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: currentUserId,
-                    title: question.substring(0, 30) + '...'
+                    title: smartTitle  // Replace "New Chat" with smart title
                 })
             });
             const data = await response.json();
@@ -351,20 +306,6 @@
             loadingMessage.textContent = 'Something went wrong. Please try again.';
             console.error(error);
         }
-    });
-
-    // Rename (only in UI since no backup route yet
-    confirmRenameBtn.addEventListener('click', function() {
-        const newName = renameInput.value.trim();
-        if (chatToRename && newName) {
-            chatToRename.element.textContent = newName;
-            if (currentChatId == chatToRename.chatId) {
-                chatHeader.textContent = newName;
-            }
-        }
-        chatToRename = null;
-        renameInput.value = '';
-        renamePopup.classList.remove('show');
     });
 
     cancelRenameBtn.addEventListener('click', function() {

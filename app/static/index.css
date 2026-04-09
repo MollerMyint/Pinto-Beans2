@@ -446,3 +446,33 @@ body {
 .confirm-btn:hover {
     background: #92c44a;
 }
+
+/* Clickable Links */
+.message a {
+    color: #2563eb;
+    text-decoration: underline;
+    word-break: break-all; /* Prevent long URLs from breaking layout */
+}
+
+.message a:hover {
+    color: #1d4ed8;
+}
+
+/* For bot messages specifically */
+.bot-message a {
+    color: #005030; 
+    font-weight: 500;
+}
+
+.bot-message a:hover {
+    color: #A5D55C;
+}
+
+/* For user messages */
+.user-message a {
+    color: #FFB81D; 
+}
+
+.user-message a:hover {
+    color: #ffffff; 
+}
