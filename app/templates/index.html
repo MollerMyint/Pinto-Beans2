@@ -289,20 +289,52 @@
         }
     });
 
+    confirmRenameBtn.addEventListener('click', async function() {
+        const newTitle = renameInput.value.trim();
+        if (chatToRename && newTitle) {
+            try {
+                await fetch(`/change/title/${chatToRename.chatId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: newTitle })
+                });
+
+                // Update the sidebar label and header if it's the active chat
+                chatToRename.element.textContent = newTitle;
+                if (currentChatId == chatToRename.chatId) {
+                    chatHeader.textContent = newTitle;
+                }
+            } catch (err) {
+                console.error('Rename failed:', err);
+            }
+        }
+        chatToRename = null;
+        renameInput.value = '';
+        renamePopup.classList.remove('show');
+    });
+
     cancelRenameBtn.addEventListener('click', function() {
         chatToRename = null;
         renameInput.value = '';
         renamePopup.classList.remove('show');
     });
 
-    // Delete (only in UI rn since no backend route yet)
-    confirmDeleteBtn.addEventListener('click', function() {
+    confirmDeleteBtn.addEventListener('click', async function() {
         if (chatToDelete) {
+            try {
+                await fetch(`/delete/chat/${chatToDelete.chatId}`, { method: 'DELETE' });
+            } catch (err) {
+                console.error('Delete failed:', err);
+            }
+
             chatToDelete.element.remove();
+
+            // If the deleted chat was the active one, reset to a blank new chat
             if (currentChatId == chatToDelete.chatId) {
                 currentChatId = null;
                 chatMessages.innerHTML = '';
-                chatHeader.textContent = 'BillyBeans Bot';
+                addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+                chatHeader.textContent = 'New Chat';
             }
         }
         chatToDelete = null;
