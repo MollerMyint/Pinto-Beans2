@@ -325,22 +325,6 @@ body {
     transform: translateY(-1px);
 }
 
-.loading {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #666;
-}
-
-.loading-spinner {
-    width: 14px;
-    height: 14px;
-    border: 1px solid #e5e5e5;
-    border-top: 1px solid #A5D55C;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -504,4 +488,86 @@ body {
 
 .user-message a:hover {
     color: #ffffff; 
+}
+
+/*Loader animation*/
+.loader-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  user-select: none;
+  gap: 10px;
+}
+.loader {
+  width: 20px;
+  height: 20px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background-color: transparent;
+  animation: loader-rotate 1.5s linear infinite;
+  z-index: 0;
+}
+
+@keyframes loader-rotate {
+  0% {
+    transform: rotate(90deg);
+    box-shadow:
+      0 1px 1px 0 #fff inset,
+      0 3px 5px 0 #A5D55C inset,
+      0 4px 4px 0 #005030 inset;
+  }
+  50% {
+    transform: rotate(270deg);
+    background: transparent;
+    box-shadow:
+      0 1px 1px 0 #005030 inset,
+      0 3px 5px 0 #FFB81D inset,
+      0 4px 4px 0 #A5D55C inset;
+  }
+  100% {
+    transform: rotate(450deg);
+    box-shadow:
+      0 1px 1px 0 #fff inset,
+      0 3px 5px 0 #A5D55C inset,
+      0 4px 4px 0 #FFB81D inset;
+  }
+}
+.letter-wrapper {
+  display: flex;
+  gap: 1px;
+}
+.loader-letter {
+  display: inline-block;
+  opacity: 0.4;
+  transform: translateY(0);
+  animation: loader-letter-anim 2s infinite;
+  z-index: 1;
+  border-radius: 50ch;
+  border: none;
+}
+.loader-letter:nth-child(1) { animation-delay: 0s; }
+.loader-letter:nth-child(2) { animation-delay: 0.1s; }
+.loader-letter:nth-child(3) { animation-delay: 0.2s; }
+.loader-letter:nth-child(4) { animation-delay: 0.3s; }
+.loader-letter:nth-child(5) { animation-delay: 0.4s; }
+.loader-letter:nth-child(6) { animation-delay: 0.5s; }
+.loader-letter:nth-child(7) { animation-delay: 0.6s; }
+.loader-letter:nth-child(8) { animation-delay: 0.7s; }
+.loader-letter:nth-child(9) { animation-delay: 0.8s; }
+.loader-letter:nth-child(10) { animation-delay: 0.9s; }
+@keyframes loader-letter-anim {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  40% {
+    opacity: 0.7;
+    transform: translateY(0);
+  }
 }

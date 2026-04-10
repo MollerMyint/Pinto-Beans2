@@ -262,7 +262,20 @@
 
         const loadingMessage = document.createElement('div');
         loadingMessage.className = 'message bot-message';
-        loadingMessage.innerHTML = `<div class="loading"><div class="loading-spinner"></div><span>Thinking...</span></div>`;
+        loadingMessage.innerHTML = `
+        <div class="loader-wrapper">
+            <div class="loader"></div>
+            <div class="letter-wrapper">
+            <span class="loader-letter">T</span>
+            <span class="loader-letter">h</span>
+            <span class="loader-letter">i</span>
+            <span class="loader-letter">n</span>
+            <span class="loader-letter">k</span>
+            <span class="loader-letter">i</span>
+            <span class="loader-letter">n</span>
+            <span class="loader-letter">g</span>
+            </div>
+        </div>`;
         chatMessages.appendChild(loadingMessage);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
