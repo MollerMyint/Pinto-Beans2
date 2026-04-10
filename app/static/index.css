@@ -151,16 +151,16 @@ body {
     color: #005030;
 }
 
-/* Dropdown menu */
+/* Dropdown Rename/Delete menu */
 .chat-options-menu {
     position: absolute;
     right: 10px;
     top: 100%;
     margin-top: 4px;
-    background: #1a2a1f;
+    background: #F0F0F0;
     border: 1px solid #A5D55C;
     border-radius: 8px;
-    padding: 4px 0;
+    padding: 4px 4px;
     min-width: 160px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     z-index: 1000;
@@ -176,7 +176,7 @@ body {
     padding: 10px 16px;
     background: transparent;
     border: none;
-    color: #ffffff;
+    color: #005030;
     text-align: left;
     cursor: pointer;
     font-size: 14px;
@@ -187,7 +187,9 @@ body {
 }
 
 .chat-options-menu button:hover {
-    background: rgba(165, 213, 92, 0.15);
+    background: rgba(184, 217, 135, 0.506);
+    border-radius: 8px;
+
 }
 
 .option-delete {
@@ -195,11 +197,17 @@ body {
 }
 
 .option-delete:hover {
-    background: rgba(255, 107, 107, 0.15) !important;
+    background: rgba(223, 94, 94, 0.15) !important;
+    border-radius: 8px;
 }
 
 .chat-options-menu .icon {
     font-size: 16px;
+}
+
+.chat-options-menu .material-symbols-outlined {
+    font-size: 18px;
+    font-variation-settings: 'wght' 300;
 }
 
 /* Scrollbar for sidebar */
