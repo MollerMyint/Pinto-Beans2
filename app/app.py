@@ -65,7 +65,7 @@ def ask_question():
     if not chat_id:
         return jsonify({"error": "No chat ID provided."}), 400
     
-    mycursor.execute("SELECT chat_id FROM chats WHERE chat_id = %s AND user_id = %s ORDER BY message_id ASC", (chat_id, user_id))
+    mycursor.execute("SELECT question, answer FROM messages WHERE chat_id = %s ORDER BY message_id ASC", (chat_id,))
     rows = mycursor.fetchall()
     # print("rows: ", rows)
 
@@ -78,12 +78,13 @@ def ask_question():
 
     response = agent_executor.invoke({"input": question, "chat_history": chat_history})  # Use the function from agent.py to get the response
     full_answer = response['output']
+    print(full_answer)
     parsed_answer = parse_agent_reply(full_answer) 
     answer = parsed_answer["answer"]
     confidence = parsed_answer["confidence"] or 0
 
     # save the new Q&A to the messages table
-    mycursor.execute("INSERT INTO messages (chat_id, question, answer, confidence_score) VALUES (%s, %s, %s, %s)",(chat_id, question, answer, confidence))
+    mycursor.execute("INSERT INTO messages (chat_id, question, answer, confidence) VALUES (%s, %s, %s, %s)",(chat_id, question, answer, confidence))
     mydb.commit()
 
     return jsonify({"answer": answer, "chat_id": chat_id})
@@ -102,6 +103,7 @@ def new_chat():
 
         response = agent_executor.invoke({"input": question, "chat_history": []})  # Use the function from agent.py to get the response
         full_answer = response['output']
+        print(full_answer)
         parsed_answer = parse_agent_reply(full_answer) # parse text to split title, answer, confidence
 
         title = parsed_answer["title"] or "New Chat"
@@ -111,7 +113,7 @@ def new_chat():
         # insert into tables and extract chat_id
         mycursor.execute("INSERT INTO chats (user_id, title) VALUES (%s, %s)", (user_id, title))
         chat_id = mycursor.lastrowid  # get the ID of the newly created chat
-        mycursor.execute("INSERT INTO messages (chat_id, question, answer, confidence_score) VALUES (%s, %s, %s, %s)",(chat_id, question, answer, confidence))
+        mycursor.execute("INSERT INTO messages (chat_id, question, answer, confidence) VALUES (%s, %s, %s, %s)",(chat_id, question, answer, confidence))
         mydb.commit()  # Save the new row in the database
 
         return jsonify({"chat_id": chat_id, "title": title, "answer": answer, "confidence": confidence})
@@ -119,7 +121,44 @@ def new_chat():
     except Exception as e:
         print("new_chat error:", e)
         return jsonify({"error": "Something went wrong creating the chat"}), 500
+
+@app.route('/delete/chat/<int:chat_id>', methods=['DELETE'])
+def delete_chat(chat_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
     
+    # make sure the chat exisits
+    mycursor.execute("SELECT chat_id FROM chats WHERE chat_id = %s AND user_id = %s", (chat_id, user_id))
+    chat = mycursor.fetchone()
+    if not chat:
+        return jsonify({"error:", "Chat not found"}), 404
+
+    # delete row(s) from chats and messages tables
+    mycursor.execute("DELETE FROM messages WHERE chat_id = %s", (chat_id,))
+    mycursor.execute("DELETE FROM chats WHERE chat_id = %s AND user_id = %s", (chat_id, user_id))
+    mydb.commit()    
+    return jsonify({"message": "Chat deleted successfully"})
+
+@app.route('/change/title/<int:chat_id>', methods=["PUT"])
+def change_title(chat_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json()
+    new_title = data.get("title")
+
+    mycursor.execute("SELECT chat_id FROM chats WHERE chat_id = %s AND user_id = %s", (chat_id, user_id))
+    chat = mycursor.fetchone()
+    if not chat:
+        return jsonify({"error:", "Chat not found"}), 404
+    
+    mycursor.execute("UPDATE chats SET title = %s WHERE chat_id = %s AND user_id = %s", (new_title, chat_id, user_id))
+    mydb.commit()
+
+    return jsonify({"chat_id": chat_id, "title": new_title})
+
 # return all of the chats that belong to a user
 @app.route('/user/chats', methods=['GET'])
 def get_chats():
