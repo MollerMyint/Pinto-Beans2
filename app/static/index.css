@@ -106,6 +106,17 @@ body {
     flex: 1;
 }
 
+.chat-icon {
+    font-size: 18px;
+    margin-right: 10px;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.chat-history-item.active .chat-icon {
+    opacity: 1;
+}
+
 .chat-options-btn {
     background: transparent;
     border: none;
