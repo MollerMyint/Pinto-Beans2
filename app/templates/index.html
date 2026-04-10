@@ -34,12 +34,12 @@
             </div>
 
             <form id="chat-form" class="chat-form">
-                <input 
-                    type="text"
+                <textarea
                     id="corpus_question"
                     name="corpus_question"
                     placeholder="Type your question here..."
-                    required>
+                    rows="1"
+                    required></textarea>
                 <button type="submit">Send</button>
             </form>
         </div>
@@ -91,6 +91,20 @@
     const confirmDeleteBtn = document.getElementById("confirm-delete");
     const cancelDeleteBtn = document.getElementById("cancel-delete");
     let chatToDelete = null;
+
+    // Auto-resize textarea as user types
+    input.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+    });
+
+    // Enter submits, Shift+Enter adds a new line
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
+        }
+    });
 
     async function loadUserChats() {
         try {
@@ -144,7 +158,6 @@
         const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
         
         const linkedText = text.replace(urlRegex, function(match, url, punctuation) {
-            // Disinclude trailing puncuation to not alter link
             return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
         });
         
@@ -224,7 +237,6 @@
     }
 
     newChatBtn.addEventListener('click', function() {
-        // Opens to unsaved new chat on load
         if (currentChatId === null) return;
 
         currentChatId = null;
@@ -243,7 +255,10 @@
         if (!question) return;
 
         addMessage(question, 'user');
+
+        // Reset textarea height after submit
         input.value = '';
+        input.style.height = 'auto';
 
         const loadingMessage = document.createElement('div');
         loadingMessage.className = 'message bot-message';
@@ -253,7 +268,6 @@
 
         try {
             if (!currentChatId) {
-                // Actually creates chat upon user input
                 const response = await fetch('/new/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -262,11 +276,7 @@
                 const data = await response.json();
 
                 currentChatId = data.chat_id;
-
-                // Update header with agent-generated title
                 chatHeader.textContent = data.title;
-
-                // Add to top of sidebar with agent-generated title
                 addChatToSidebar(data.chat_id, data.title, true);
                 document.querySelector(`[data-chat-id="${data.chat_id}"]`)?.classList.add('active');
 
@@ -274,7 +284,6 @@
                 addMessage(data.answer, 'bot');
 
             } else {
-                // Subsequent questions in existing chat
                 const response = await fetch('/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -300,7 +309,6 @@
                     body: JSON.stringify({ title: newTitle })
                 });
 
-                // Update the sidebar label and header if it's the active chat
                 chatToRename.element.textContent = newTitle;
                 if (currentChatId == chatToRename.chatId) {
                     chatHeader.textContent = newTitle;
@@ -330,7 +338,6 @@
 
             chatToDelete.element.remove();
 
-            // If the deleted chat was the active one, reset to a blank new chat
             if (currentChatId == chatToDelete.chatId) {
                 currentChatId = null;
                 chatMessages.innerHTML = '';
@@ -379,3 +386,5 @@
     // Start the app
     loadUserChats();
 </script>
+</body>
+</html>
