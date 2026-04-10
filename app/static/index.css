@@ -24,14 +24,14 @@ body {
     border-right: 1px solid #A5D55C;
     display: flex;
     flex-direction: column;
-    padding: 20px 0;
+    padding: 10px 0;
 }
 
 .sidebar-header {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 0 20px 24px 20px;
+    padding: 0 20px 15px 20px;
 }
 
 .logo {
@@ -53,7 +53,7 @@ body {
 }
 
 .new-chat-btn {
-    margin: 0 12px 20px 12px;
+    margin: 16px 12px 20px 12px;
     padding: 14px;
     background: #A5D55C;
     border: none;
@@ -229,7 +229,7 @@ body {
 }
 
 .chat-header {
-    padding: 18px 22px;
+    padding: 21px 22px;
     background: #004428;
     border-bottom: 1px solid #A5D55C;
     font-size: 20px;
