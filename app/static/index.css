@@ -63,6 +63,15 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.new-chat-btn .material-symbols-outlined {
+    font-size: 20px;
+    font-variation-settings: 'wght' 300;
 }
 
 .new-chat-btn:hover {
@@ -107,10 +116,11 @@ body {
 }
 
 .chat-icon {
-    font-size: 18px;
+    font-size: 20px;
     margin-right: 10px;
     opacity: 0.7;
     flex-shrink: 0;
+    font-variation-settings: 'wght' 400;
 }
 
 .chat-history-item.active .chat-icon {

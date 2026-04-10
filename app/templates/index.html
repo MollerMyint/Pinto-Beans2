@@ -4,6 +4,7 @@
     <title>BillyBeans Bot</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
 </head>
 <body>
     <div class="app-container">
@@ -14,8 +15,9 @@
             <span class="app-name">BillyBeans Bot</span>
         </div>
 
-            <button class = "new-chat-btn" id = "new-chat-btn">
-                <span> New Chat +</span>
+            <button class="new-chat-btn" id="new-chat-btn">
+                <span>New Chat</span>
+                <span class="material-symbols-outlined">chat_add_on</span>
             </button>
 
             <div class="chat-history" id="chat-history">
@@ -145,7 +147,7 @@
         chatItem.className = 'chat-history-item';
         chatItem.dataset.chatId = chatId;
         chatItem.innerHTML = `
-            <span class="chat-icon">💬</span>
+            <span class="chat-icon material-symbols-outlined">chat</span>
             <span class="chat-name">${title}</span>
             <button class="chat-options-btn">⋮</button>
             <div class="chat-options-menu">
