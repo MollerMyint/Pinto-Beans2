@@ -51,6 +51,22 @@ def home():
 def chatUI():
     return render_template("index.html")
 
+@app.route('/discord/ask', methods=['POST'])
+def ask_discord_agent():
+
+    data = request.get_json() # get the data from the HTML form 
+    question = data.get("question")
+
+    agent_executor = create_agent()  # Create a new agent to answer the question 
+
+    response = agent_executor.invoke({"input": question, "chat_history": []})  # Use the function from agent.py to get the response
+    full_answer = response['output']
+    print(full_answer)
+    parsed_answer = parse_agent_reply(full_answer) 
+    answer = parsed_answer["answer"]
+
+    return jsonify({"answer": answer})
+
 # Tells the application which URL is associated with this function
 @app.route('/ask', methods=['POST'])
 def ask_question():
