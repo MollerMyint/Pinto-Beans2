@@ -424,7 +424,7 @@ body {
 }
 
 .popup-content {
-    background: #003d24;
+    background: #ffffff;
     border: 2px solid #A5D55C;
     border-radius: 12px;
     padding: 24px;
@@ -435,19 +435,19 @@ body {
 
 .popup-content h3 {
     margin: 0 0 12px 0;
-    color: #ffffff;
+    color: #005030;
     font-size: 20px;
 }
 
 .popup-content p {
     margin: 8px 0;
-    color: #ffffff;
+    color: #005030;
     font-size: 15px;
 }
 
 .chat-to-delete {
     font-weight: 600;
-    color: #FFB81D;
+    color: #B52C4C;
 }
 
 .popup-buttons {
@@ -468,12 +468,12 @@ body {
 }
 
 .cancel-btn {
-    background: #6b6b6b;
-    color: #ffffff;
+    background: #e5e7eb;
+    color: #374151;
 }
 
 .cancel-btn:hover {
-    background: #7b7b7b;
+    background: #d1d5db;
 }
 
 .confirm-btn {
@@ -482,17 +482,17 @@ body {
 }
 
 .confirm-btn:hover {
-    background: #B52C4C;
+    background: #9b2440;
 }
 
 /* Popup input field for rename */
 .popup-input {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid #B52C4C;
+    border: 1px solid #d1d5db;
     border-radius: 8px;
-    background: #004428;
-    color: #ffffff;
+    background: #ffffff;
+    color: #1a1a1a;
     font-size: 15px;
     outline: none;
     margin: 12px 0 20px 0;
@@ -500,20 +500,11 @@ body {
 }
 
 .popup-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    color: #9ca3af;
 }
 
 .popup-input:focus {
-    border-color: #FFB81D;
-}
-
-.confirm-btn {
-    background: #B52C4C;
-    color: #FFFFFF;
-}
-
-.confirm-btn:hover {
-    background: #92c44a;
+    border-color: #A5D55C;
 }
 
 /* Clickable Links */
