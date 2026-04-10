@@ -1,6 +1,6 @@
 __pycache__/
 
-.env
+agent/.env
 
 venv/
 
@@ -12,3 +12,4 @@ agent/campus_kb.db
 ca.pem
 
 .DS_Store
+app/.env
