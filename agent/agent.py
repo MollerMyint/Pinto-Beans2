@@ -385,7 +385,7 @@ def create_agent(*, return_intermediate_steps: bool = True) -> AgentExecutor:
 
     # Initialize the LLM
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
+        model="gpt-5.4-mini",
         temperature=0.2,
         api_key=api_key
     )

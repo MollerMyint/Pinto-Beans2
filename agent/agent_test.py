@@ -418,7 +418,7 @@ def create_agent() -> AgentExecutor:
         raise ValueError("OPENAI_API_KEY environment variable not found. Please set it in your .env file.")
 
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
+        model="gpt-5.4-mini",
         temperature=0.2,
         api_key=api_key
     )
