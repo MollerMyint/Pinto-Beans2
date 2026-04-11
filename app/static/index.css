@@ -1,9 +1,19 @@
+/*
+   GLOBAL RESET
+   Removes default browser spacing and sets
+   box-sizing so padding doesn't affect layout
+*/
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/*
+   BASE BODY STYLES
+   Sets the app-wide font, background color,
+   and prevents the page from scrolling
+*/
 body {
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     background: #005030;
@@ -12,12 +22,21 @@ body {
     overflow: hidden;
 }
 
+/*
+   APP LAYOUT
+   Side-by-side flex layout for sidebar and
+   main chat area filling the full viewport
+*/
 .app-container {
     display: flex;
     height: 100vh;
 }
 
-/*Sidebar*/
+/*
+   SIDEBAR
+   Fixed-width left panel containing the logo,
+   new chat button, and chat history list
+*/
 .sidebar {
     width: 300px;
     background: #003d24;
@@ -27,6 +46,7 @@ body {
     padding: 10px 0;
 }
 
+/* Logo and app name row at the top of the sidebar */
 .sidebar-header {
     display: flex;
     align-items: center;
@@ -34,6 +54,7 @@ body {
     padding: 0 20px 15px 20px;
 }
 
+/* Bean emoji logo container */
 .logo {
     width: 50px; 
     height: 50px; 
@@ -46,12 +67,18 @@ body {
     font-size: 40px;
 }
 
+/* App title text next to the logo */
 .app-name {
     font-size: 20px;
     font-weight: 600;
     color: #FFFFFF
 }
 
+/*
+   NEW CHAT BUTTON
+   Green button with icon that starts a new
+   conversation. Animates to a gradient on hover
+*/
 .new-chat-btn {
     margin: 16px 12px 20px 12px;
     padding: 14px;
@@ -69,15 +96,22 @@ body {
     gap: 8px;
 }
 
+/* Icon size inside the new chat button */
 .new-chat-btn .material-symbols-outlined {
     font-size: 20px;
     font-variation-settings: 'wght' 300;
 }
 
+/* Gold-to-green gradient on hover */
 .new-chat-btn:hover {
     background: linear-gradient(to right, #FFB81D, #C8E639, #A5D55C);
 }
 
+/*
+   CHAT HISTORY LIST
+   Scrollable list of past conversations in
+   the sidebar, each with a name and options
+*/
 .chat-history {
     flex: 1;
     overflow-y: auto;
@@ -87,6 +121,7 @@ body {
     padding: 0 12px;
 }
 
+/* Individual chat history row */
 .chat-history-item {
     padding: 14px 16px;
     background: transparent;
@@ -101,20 +136,24 @@ body {
     position: relative;
 }
 
+/* Gold tint on hover */
 .chat-history-item:hover {
     background: rgba(255, 184, 29, 0.15);
 }
 
+/* Green highlight for the currently active chat */
 .chat-history-item.active {
     background: #A5D55C;
     color: #005030;
     font-weight: 500;
 }
 
+/* Chat name text takes remaining row width */
 .chat-name {
     flex: 1;
 }
 
+/* Material Symbols chat icon before each chat name */
 .chat-icon {
     font-size: 20px;
     margin-right: 10px;
@@ -123,10 +162,16 @@ body {
     font-variation-settings: 'wght' 400;
 }
 
+/* Full opacity icon for the active chat */
 .chat-history-item.active .chat-icon {
     opacity: 1;
 }
 
+/*
+   CHAT OPTIONS BUTTON (⋮)
+   Three-dot menu button that appears on hover
+   to reveal rename and delete options
+*/
 .chat-options-btn {
     background: transparent;
     border: none;
@@ -139,6 +184,7 @@ body {
     transition: opacity 0.2s ease, background 0.2s ease;
 }
 
+/* Show the button only when hovering the row */
 .chat-history-item:hover .chat-options-btn {
     opacity: 1;
 }
@@ -147,11 +193,16 @@ body {
     background: rgba(255, 184, 29, 0.2);
 }
 
+/* Dark green color for options button on active chat */
 .chat-history-item.active .chat-options-btn {
     color: #005030;
 }
 
-/* Dropdown Rename/Delete menu */
+/*
+   RENAME / DELETE DROPDOWN MENU
+   White dropdown that appears below the ⋮ button
+   with rounded hover highlights on each option
+*/
 .chat-options-menu {
     position: absolute;
     right: 10px;
@@ -167,10 +218,12 @@ body {
     display: none;
 }
 
+/* Show the dropdown when toggled */
 .chat-options-menu.show {
     display: block;
 }
 
+/* Each option button row with icon and label */
 .chat-options-menu button {
     width: 100%;
     padding: 10px 16px;
@@ -186,16 +239,18 @@ body {
     transition: background 0.2s ease;
 }
 
+/* Green rounded hover for rename */
 .chat-options-menu button:hover {
     background: rgba(184, 217, 135, 0.506);
     border-radius: 8px;
-
 }
 
+/* Red text for the delete option */
 .option-delete {
     color: #B52C4C !important;
 }
 
+/* Red rounded hover for delete */
 .option-delete:hover {
     background: rgba(223, 94, 94, 0.15) !important;
     border-radius: 8px;
@@ -205,12 +260,17 @@ body {
     font-size: 16px;
 }
 
+/* Icon sizing for rename/delete Material Symbols icons */
 .chat-options-menu .material-symbols-outlined {
     font-size: 18px;
     font-variation-settings: 'wght' 300;
 }
 
-/* Scrollbar for sidebar */
+/*
+   SIDEBAR SCROLLBAR
+   Custom thin scrollbar styling for the
+   chat history list
+*/
 .chat-history::-webkit-scrollbar {
     width: 6px;
 }
@@ -228,7 +288,121 @@ body {
     background: #e5a519;
 }
 
-/*Main Chat Container*/
+/*
+   RENAME & DELETE CONFIRMATION POPUPS
+   Modal overlays with white content cards
+   for confirming destructive actions
+*/
+.popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup.show {
+    display: flex;
+}
+
+/* White card inside the popup overlay */
+.popup-content {
+    background: #ffffff;
+    border: 2px solid #A5D55C;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.popup-content h3 {
+    margin: 0 0 12px 0;
+    color: #005030;
+    font-size: 20px;
+}
+
+.popup-content p {
+    margin: 8px 0;
+    color: #005030;
+    font-size: 15px;
+}
+
+/* Chat name shown in red inside the delete confirmation */
+.chat-to-delete {
+    font-weight: 600;
+    color: #B52C4C;
+}
+
+.popup-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+.popup-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+/* Gray cancel button */
+.cancel-btn {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.cancel-btn:hover {
+    background: #d1d5db;
+}
+
+/* Red confirm button for destructive actions */
+.confirm-btn {
+    background: #B52C4C;
+    color: #ffffff;
+}
+
+.confirm-btn:hover {
+    background: #9b2440;
+}
+
+/* Text input field inside the rename popup */
+.popup-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1a1a1a;
+    font-size: 15px;
+    outline: none;
+    margin: 12px 0 20px 0;
+    transition: border-color 0.2s ease;
+}
+
+.popup-input::placeholder {
+    color: #9ca3af;
+}
+
+.popup-input:focus {
+    border-color: #A5D55C;
+}
+
+/*
+   MAIN CHAT CONTAINER
+   Right-side panel that holds the header,
+   message feed, and input form
+*/
 .chat-container {
     flex: 1;
     display: flex;
@@ -236,6 +410,7 @@ body {
     overflow: hidden;
 }
 
+/* Top bar showing the current chat name */
 .chat-header {
     padding: 21px 22px;
     background: #004428;
@@ -245,7 +420,11 @@ body {
     color: #FFFFFF;
 }
 
-/*Chat Messages padding*/
+/*
+   CHAT MESSAGES FEED
+   Scrollable area displaying all bot and
+   user messages in chronological order
+*/
 .chat-messages {
     flex: 1;
     padding: 20px 20px 100px 20px;
@@ -256,7 +435,11 @@ body {
     background: #ffffff;
 }
 
-/*Message bubbles*/
+/*
+   MESSAGE BUBBLES
+   Shared styles for all messages, with
+   separate styles for bot and user variants
+*/
 .message {
     max-width: 80%;
     padding: 14px 16px;
@@ -267,6 +450,7 @@ body {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+/* Bot messages appear on the left with a green left border */
 .bot-message {
     align-self: flex-start;
     background: #f0f0f0;
@@ -276,6 +460,7 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
+/* User messages appear on the right in green */
 .user-message {
     align-self: flex-end;
     background: #A5D55C;
@@ -283,7 +468,12 @@ body {
     border-bottom-right-radius: 6px;
 }
 
-/*User Input Bar*/
+/*
+   USER INPUT BAR
+   Bottom form with an auto-resizing textarea
+   and an animated send button with a paper
+   plane icon that flies on hover
+*/
 .chat-form {
     display: flex;
     gap: 12px;
@@ -294,6 +484,7 @@ body {
     justify-content: center;
 }
 
+/* Auto-resizing textarea that grows up to 150px tall */
 .chat-form input[type="text"],
 .chat-form textarea {
     flex: 1;
@@ -319,12 +510,14 @@ body {
     color: #9ca3af;
 }
 
+/* Dark green border on focus */
 .chat-form input[type="text"]:focus,
 .chat-form textarea:focus {
     border-color: #005030;
     box-shadow: 0 4px 12px rgba(165, 213, 92, 0.2);
 }
 
+/* Send button base styles */
 .chat-form button {
   font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
@@ -355,19 +548,23 @@ body {
   transition: transform 0.3s ease-in-out;
 }
 
+/* Gold-to-green gradient on hover */
 .chat-form button:hover {
   background: linear-gradient(to right, #FFB81D, #A5D55C);
   box-shadow: 0 4px 12px rgba(255, 184, 29, 0.4);
 }
 
+/* Paper plane icon bobs up and down on hover */
 .chat-form button:hover .svg-wrapper {
   animation: fly-1 0.6s ease-in-out infinite alternate;
 }
 
+/* Paper plane rotates and flies to the right on hover */
 .chat-form button:hover svg {
   transform: translateX(1.2em) rotate(45deg) scale(1.1);
 }
 
+/* "Send" text slides off screen on hover */
 .chat-form button:hover span {
   transform: translateX(5em);
 }
@@ -376,18 +573,24 @@ body {
   transform: scale(0.95);
 }
 
+/* Paper plane bobbing animation */
 @keyframes fly-1 {
   from { transform: translateY(0.1em); }
   to { transform: translateY(-0.1em); }
 }
 
+/* Spin animation used by the regenerate button while loading */
 @keyframes spin {
     to {
         transform: rotate(360deg);
     }
 }
 
-/*Scrollbar for chat messages*/
+/*
+   CHAT MESSAGES SCROLLBAR
+   Custom thin green scrollbar for the
+   main message feed
+*/
 .chat-messages::-webkit-scrollbar {
     width: 6px;
 }
@@ -405,221 +608,12 @@ body {
     background: #92c44a;
 }
 
-/* Delete confirmation Popup */
-.popup {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-}
-
-.popup.show {
-    display: flex;
-}
-
-.popup-content {
-    background: #ffffff;
-    border: 2px solid #A5D55C;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-}
-
-.popup-content h3 {
-    margin: 0 0 12px 0;
-    color: #005030;
-    font-size: 20px;
-}
-
-.popup-content p {
-    margin: 8px 0;
-    color: #005030;
-    font-size: 15px;
-}
-
-.chat-to-delete {
-    font-weight: 600;
-    color: #B52C4C;
-}
-
-.popup-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-    justify-content: flex-end;
-}
-
-.popup-btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s ease;
-}
-
-.cancel-btn {
-    background: #e5e7eb;
-    color: #374151;
-}
-
-.cancel-btn:hover {
-    background: #d1d5db;
-}
-
-.confirm-btn {
-    background: #B52C4C;
-    color: #ffffff;
-}
-
-.confirm-btn:hover {
-    background: #9b2440;
-}
-
-/* Popup input field for rename */
-.popup-input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #1a1a1a;
-    font-size: 15px;
-    outline: none;
-    margin: 12px 0 20px 0;
-    transition: border-color 0.2s ease;
-}
-
-.popup-input::placeholder {
-    color: #9ca3af;
-}
-
-.popup-input:focus {
-    border-color: #A5D55C;
-}
-
-/* Clickable Links */
-.message a {
-    color: #2563eb;
-    text-decoration: underline;
-    word-break: break-all; /* Prevent long URLs from breaking layout */
-}
-
-.message a:hover {
-    color: #1d4ed8;
-}
-
-/* For bot messages specifically */
-.bot-message a {
-    color: #005030; 
-    font-weight: 500;
-}
-
-.bot-message a:hover {
-    color: #A5D55C;
-}
-
-/* For user messages */
-.user-message a {
-    color: #FFB81D; 
-}
-
-.user-message a:hover {
-    color: #ffffff; 
-}
-
-/*Loader animation*/
-.loader-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #1a1a1a;
-  user-select: none;
-  gap: 10px;
-}
-.loader {
-  width: 20px;
-  height: 20px;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  background-color: transparent;
-  animation: loader-rotate 1.5s linear infinite;
-  z-index: 0;
-}
-
-@keyframes loader-rotate {
-  0% {
-    transform: rotate(90deg);
-    box-shadow:
-      0 1px 1px 0 #fff inset,
-      0 3px 5px 0 #A5D55C inset,
-      0 4px 4px 0 #005030 inset;
-  }
-  50% {
-    transform: rotate(270deg);
-    background: transparent;
-    box-shadow:
-      0 1px 1px 0 #005030 inset,
-      0 3px 5px 0 #FFB81D inset,
-      0 4px 4px 0 #A5D55C inset;
-  }
-  100% {
-    transform: rotate(450deg);
-    box-shadow:
-      0 1px 1px 0 #fff inset,
-      0 3px 5px 0 #A5D55C inset,
-      0 4px 4px 0 #FFB81D inset;
-  }
-}
-.letter-wrapper {
-  display: flex;
-  gap: 1px;
-}
-.loader-letter {
-  display: inline-block;
-  opacity: 0.4;
-  transform: translateY(0);
-  animation: loader-letter-anim 2s infinite;
-  z-index: 1;
-  border-radius: 50ch;
-  border: none;
-}
-.loader-letter:nth-child(1) { animation-delay: 0s; }
-.loader-letter:nth-child(2) { animation-delay: 0.1s; }
-.loader-letter:nth-child(3) { animation-delay: 0.2s; }
-.loader-letter:nth-child(4) { animation-delay: 0.3s; }
-.loader-letter:nth-child(5) { animation-delay: 0.4s; }
-.loader-letter:nth-child(6) { animation-delay: 0.5s; }
-.loader-letter:nth-child(7) { animation-delay: 0.6s; }
-.loader-letter:nth-child(8) { animation-delay: 0.7s; }
-.loader-letter:nth-child(9) { animation-delay: 0.8s; }
-.loader-letter:nth-child(10) { animation-delay: 0.9s; }
-@keyframes loader-letter-anim {
-  0%, 100% {
-    opacity: 0.4;
-    transform: translateY(0);
-  }
-  20% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-  40% {
-    opacity: 0.7;
-    transform: translateY(0);
-  }
-}
-
-/*Copy response to clipboard*/
+/*
+   BOT MESSAGE ACTION BUTTONS
+   Copy and regenerate buttons that appear
+   below each bot response separated by a
+   subtle divider line
+*/
 .message-actions {
     display: flex;
     gap: 4px;
@@ -628,6 +622,7 @@ body {
     border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+/* Shared styles for copy and regenerate buttons */
 .action-btn {
     background: transparent;
     border: none;
@@ -653,8 +648,167 @@ body {
     font-variation-settings: 'wght' 300;
 }
 
-/*Regenerate response*/
+/* Dims the regenerate button while a request is in flight */
 .regenerate-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/*
+   CLICKABLE LINKS IN MESSAGES
+   Styled differently for bot vs user bubbles
+   to maintain readability against each background
+*/
+.message a {
+    color: #2563eb;
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.message a:hover {
+    color: #1d4ed8;
+}
+
+/* Links in bot messages use dark green */
+.bot-message a {
+    color: #005030; 
+    font-weight: 500;
+}
+
+.bot-message a:hover {
+    color: #A5D55C;
+}
+
+/* Links in user messages use gold */
+.user-message a {
+    color: #FFB81D; 
+}
+
+.user-message a:hover {
+    color: #ffffff; 
+}
+
+/*
+   MARKDOWN RENDERED MESSAGE TEXT
+   Styles for parsed markdown inside bot responses
+   including paragraphs, lists, and links.
+   marked.js converts the AI's markdown output
+   into structured HTML automatically.
+*/
+.message-text p {
+    margin: 0 0 8px 0;
+}
+
+.message-text p:last-child {
+    margin-bottom: 0;
+}
+
+.message-text ul, 
+.message-text ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.message-text a {
+    color: #005030;
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+.message-text a:hover {
+    color: #A5D55C;
+}
+
+/*
+   THINKING LOADER ANIMATION
+   Spinning color-cycling circle paired with
+   bouncing "Thinking" letters shown while
+   waiting for a bot response
+*/
+.loader-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  user-select: none;
+  gap: 10px;
+}
+
+.loader {
+  width: 20px;
+  height: 20px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background-color: transparent;
+  animation: loader-rotate 1.5s linear infinite;
+  z-index: 0;
+}
+
+/* Spinner cycles through green and gold theme colors */
+@keyframes loader-rotate {
+  0% {
+    transform: rotate(90deg);
+    box-shadow:
+      0 1px 1px 0 #fff inset,
+      0 3px 5px 0 #A5D55C inset,
+      0 4px 4px 0 #005030 inset;
+  }
+  50% {
+    transform: rotate(270deg);
+    background: transparent;
+    box-shadow:
+      0 1px 1px 0 #005030 inset,
+      0 3px 5px 0 #FFB81D inset,
+      0 4px 4px 0 #A5D55C inset;
+  }
+  100% {
+    transform: rotate(450deg);
+    box-shadow:
+      0 1px 1px 0 #fff inset,
+      0 3px 5px 0 #A5D55C inset,
+      0 4px 4px 0 #FFB81D inset;
+  }
+}
+
+.letter-wrapper {
+  display: flex;
+  gap: 1px;
+}
+
+/* Each letter bounces in sequence via animation-delay */
+.loader-letter {
+  display: inline-block;
+  opacity: 0.4;
+  transform: translateY(0);
+  animation: loader-letter-anim 2s infinite;
+  z-index: 1;
+  border-radius: 50ch;
+  border: none;
+}
+
+.loader-letter:nth-child(1) { animation-delay: 0s; }
+.loader-letter:nth-child(2) { animation-delay: 0.1s; }
+.loader-letter:nth-child(3) { animation-delay: 0.2s; }
+.loader-letter:nth-child(4) { animation-delay: 0.3s; }
+.loader-letter:nth-child(5) { animation-delay: 0.4s; }
+.loader-letter:nth-child(6) { animation-delay: 0.5s; }
+.loader-letter:nth-child(7) { animation-delay: 0.6s; }
+.loader-letter:nth-child(8) { animation-delay: 0.7s; }
+.loader-letter:nth-child(9) { animation-delay: 0.8s; }
+.loader-letter:nth-child(10) { animation-delay: 0.9s; }
+
+@keyframes loader-letter-anim {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  40% {
+    opacity: 0.7;
+    transform: translateY(0);
+  }
 }

@@ -2,39 +2,50 @@
 <html>
 <head>
     <title>BillyBeans Bot</title>
+
+    <!-- App stylesheet, Google Font, Google Material Symbols -->
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
 </head>
 <body>
+    <!-- ======APP LAYOUT====== -->
     <div class="app-container">
-        <!--Code for side bar-->
-        <div class = "sidebar">
-            <div class="sidebar-header">
-            <div class="logo">🫘</div>
-            <span class="app-name">BillyBeans Bot</span>
-        </div>
 
+        <!-- ======SIDEBAR====== -->
+        <div class="sidebar">
+
+            <!-- Logo and app name -->
+            <div class="sidebar-header">
+                <div class="logo">🫘</div>
+                <span class="app-name">BillyBeans Bot</span>
+            </div>
+
+            <!-- Button to start a new unsaved chat -->
             <button class="new-chat-btn" id="new-chat-btn">
                 <span>New Chat</span>
                 <span class="material-symbols-outlined">chat_add_on</span>
             </button>
 
+            <!-- Chat history list — populated dynamically from the database -->
             <div class="chat-history" id="chat-history">
-            <!-- Will later load chats from database -->
             </div>
         </div>
 
-        <!--Main Chat Box-->
+        <!-- ======MAIN CHAT AREA====== -->
         <div class="chat-container">
+
+            <!-- Displays the current chat's name -->
             <div class="chat-header">Current Chat Name</div>
 
+            <!-- Scrollable message feed where bot and user messages appear -->
             <div class="chat-messages" id="chat-messages">
                 <div class="message bot-message">
                     Welcome to the BillyBean Bot! Type a question to get started.
                 </div>
             </div>
 
+            <!-- User input form with auto-resizing textarea and animated send button -->
             <form id="chat-form" class="chat-form">
                 <textarea
                     id="corpus_question"
@@ -42,23 +53,24 @@
                     placeholder="Type your question here..."
                     rows="1"
                     required></textarea>
+
+                <!-- Send button with animated paper plane icon -->
                 <button type="submit">
-                <!--Send button-->
-                <div class="svg-wrapper-1">
-                    <div class="svg-wrapper">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                        <path fill="none" d="M0 0h24v24H0z"></path>
-                        <path fill="currentColor" d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"></path>
-                    </svg>
+                    <div class="svg-wrapper-1">
+                        <div class="svg-wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="none" d="M0 0h24v24H0z"></path>
+                            <path fill="currentColor" d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"></path>
+                        </svg>
+                        </div>
                     </div>
-                </div>
-                <span>Send</span>
+                    <span>Send</span>
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Rename Popup -->
+    <!-- ======RENAME POPUP====== -->
     <div id="rename-popup" class="popup">
         <div class="popup-content">
             <h3>Rename Chat</h3>
@@ -70,7 +82,7 @@
         </div>
     </div>
 
-    <!-- Delete Confirmation Popup -->
+    <!-- ====== DELETE CONFIRMATION POPUP====== -->
     <div id="delete-popup" class="popup">
         <div class="popup-content">
             <h3>Delete Chat</h3>
@@ -83,7 +95,13 @@
         </div>
     </div>
 
+    <!-- marked.js: converts AI markdown responses into structured HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+
     <script>
+
+    // DOM REFERENCES & STATE VARIABLES
+    // Grab key elements and initialize app state
     const form = document.getElementById("chat-form");
     const input = document.getElementById("corpus_question");
     const chatMessages = document.getElementById("chat-messages");
@@ -92,7 +110,7 @@
     const chatHeader = document.querySelector(".chat-header");
     let currentChatId = null;
 
-    // Rename/delete popup elements
+    // Popup element references for rename and delete modals
     const renamePopup = document.getElementById("rename-popup");
     const renameInput = document.getElementById("rename-input");
     const confirmRenameBtn = document.getElementById("confirm-rename");
@@ -104,15 +122,20 @@
     const cancelDeleteBtn = document.getElementById("cancel-delete");
     let chatToDelete = null;
 
+    // Tracks the last question asked so the regenerate button can re-send it
     let lastQuestion = null;
 
-    // Auto-resize textarea as user types
+    // TEXTAREA AUTO-RESIZE
+    // Expands the input box as the user types,
+    // up to the max-height defined in CSS
     input.addEventListener('input', function () {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
 
-    // Enter submits, Shift+Enter adds a new line
+    // KEYBOARD SHORTCUT
+    // Enter submits the form, Shift+Enter adds
+    // a new line without submitting
     input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -120,6 +143,9 @@
         }
     });
 
+    // LOAD USER CHATS ON STARTUP
+    // Fetches all saved chats from the database
+    // and populates the sidebar history list
     async function loadUserChats() {
         try {
             const response = await fetch(`/user/chats`);
@@ -131,7 +157,7 @@
                 addChatToSidebar(chat.chat_id, chat.title);
             });
 
-            // Start on a blank unsaved chat every time
+            // Always start on a blank unsaved chat on load
             currentChatId = null;
             chatMessages.innerHTML = '';
             addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
@@ -142,7 +168,11 @@
         }
     }
 
-    // prepend parameter defaults to false for initial load
+    // ADD CHAT TO SIDEBAR
+    // Creates a chat history row with a name,
+    // Material Symbols icon, and rename/delete
+    // options menu. Prepends for new chats,
+    // appends for loaded history.
     function addChatToSidebar(chatId, title, prepend = false) {
         const chatItem = document.createElement('div');
         chatItem.className = 'chat-history-item';
@@ -170,76 +200,82 @@
         attachChatItemListeners(chatItem);
     }
 
+    // ADD MESSAGE TO FEED
+    // Renders a message bubble for either the
+    // user or bot. Bot messages are parsed through
+    // marked.js to render markdown (bold, lists,
+    // links) and include copy + regenerate buttons.
     function addMessage(text, sender) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
-        
-        const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
-        const linkedText = text.replace(urlRegex, function(match, url, punctuation) {
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
-        });
-        
+
+        // Convert markdown syntax to HTML
+        const parsedText = marked.parse(text);
+
         if (sender === 'bot') {
-        messageDiv.innerHTML = `
-            <div class="message-text">${linkedText}</div>
-            <div class="message-actions">
-                <button class="action-btn copy-btn" title="Copy">
-                    <span class="material-symbols-outlined">content_copy</span>
-                </button>
-                <button class="action-btn regenerate-btn" title="Regenerate">
-                    <span class="material-symbols-outlined">replay</span>
-                </button>
-            </div>
-        `;
+            messageDiv.innerHTML = `
+                <div class="message-text">${parsedText}</div>
+                <div class="message-actions">
+                    <button class="action-btn copy-btn" title="Copy">
+                        <span class="material-symbols-outlined">content_copy</span>
+                    </button>
+                    <button class="action-btn regenerate-btn" title="Regenerate">
+                        <span class="material-symbols-outlined">replay</span>
+                    </button>
+                </div>
+            `;
 
-        messageDiv.querySelector('.copy-btn').addEventListener('click', function() {
-            const textToCopy = messageDiv.querySelector('.message-text').innerText;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                const icon = this.querySelector('.material-symbols-outlined');
-                icon.textContent = 'check';
-                setTimeout(() => icon.textContent = 'content_copy', 2000);
+            // Copy button: copies plain text of the response to clipboard
+            // and briefly shows a checkmark to confirm success
+            messageDiv.querySelector('.copy-btn').addEventListener('click', function() {
+                const textToCopy = messageDiv.querySelector('.message-text').innerText;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const icon = this.querySelector('.material-symbols-outlined');
+                    icon.textContent = 'check';
+                    setTimeout(() => icon.textContent = 'content_copy', 2000);
+                });
             });
-        });
 
-        messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
-            if (!currentChatId || !lastQuestion) return;
+            // Regenerate button: re-sends the last question to the API
+            // and replaces this message's content with the new response
+            messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
+                if (!currentChatId || !lastQuestion) return;
 
-            // Disable button while regenerating
-            this.disabled = true;
-            const icon = this.querySelector('.material-symbols-outlined');
-            icon.style.animation = 'spin 1s linear infinite';
+                this.disabled = true;
+                const icon = this.querySelector('.material-symbols-outlined');
+                icon.style.animation = 'spin 1s linear infinite';
 
-            try {
-                const response = await fetch('/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: lastQuestion, chat_id: currentChatId })
-                });
-                const data = await response.json();
+                try {
+                    const response = await fetch('/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question: lastQuestion, chat_id: currentChatId })
+                    });
+                    const data = await response.json();
+                    // Parse the new response through marked.js to preserve formatting
+                    messageDiv.querySelector('.message-text').innerHTML = marked.parse(data.answer);
+                } catch (error) {
+                    console.error('Regenerate failed:', error);
+                }
 
-                // New response with clickable link
-                const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
-                const linkedAnswer = data.answer.replace(urlRegex, function(match, url, punctuation) {
-                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
-                });
-                messageDiv.querySelector('.message-text').innerHTML = linkedAnswer;
-            } catch (error) {
-                console.error('Regenerate failed:', error);
-            }
+                this.disabled = false;
+                icon.style.animation = '';
+            });
 
-            this.disabled = false;
-            icon.style.animation = '';
-        });
-        
         } else {
-            messageDiv.innerHTML = linkedText;
+            messageDiv.innerHTML = parsedText;
         }
-        
+
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // CHAT ITEM LISTENERS
+    // Attaches click handlers to each sidebar row
+    // for loading the chat, toggling the options
+    // menu, and triggering rename/delete popups
     function attachChatItemListeners(chatItem) {
+        // Click the row to load that chat
         chatItem.addEventListener('click', function(e) {
             if (!e.target.classList.contains('chat-options-btn') && 
                 !e.target.closest('.chat-options-menu')) {
@@ -249,6 +285,7 @@
             }
         });
 
+        // Toggle the rename/delete dropdown menu
         const optionsBtn = chatItem.querySelector('.chat-options-btn');
         optionsBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -259,6 +296,7 @@
             menu.classList.toggle('show');
         });
 
+        // Open the rename popup pre-filled with the current chat name
         const renameBtn = chatItem.querySelector('.option-rename');
         renameBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -270,6 +308,7 @@
             this.closest('.chat-options-menu').classList.remove('show');
         });
 
+        // Open the delete confirmation popup with the chat name
         const deleteBtn = chatItem.querySelector('.option-delete');
         deleteBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -281,6 +320,9 @@
         });
     }
 
+    // LOAD CHAT MESSAGES
+    // Fetches and renders all messages for a
+    // selected chat, highlighting it as active
     async function loadChat(chatId, chatName) {
         currentChatId = chatId;
         chatHeader.textContent = chatName;
@@ -309,6 +351,9 @@
         }
     }
 
+    // NEW CHAT BUTTON
+    // Resets the chat area to a blank state
+    // without saving, if not already on a new chat
     newChatBtn.addEventListener('click', function() {
         if (currentChatId === null) return;
 
@@ -322,10 +367,17 @@
         });
     });
 
+    // FORM SUBMIT — SEND A MESSAGE
+    // Saves the question for regeneration, shows
+    // the thinking loader, then calls the backend.
+    // First message creates a new chat; subsequent
+    // messages append to the existing one.
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         const question = input.value.trim();
         if (!question) return;
+
+        // Save for use by the regenerate button
         lastQuestion = question; 
 
         addMessage(question, 'user');
@@ -334,6 +386,7 @@
         input.value = '';
         input.style.height = 'auto';
 
+        // Show the animated thinking loader while waiting for a response
         const loadingMessage = document.createElement('div');
         loadingMessage.className = 'message bot-message';
         loadingMessage.innerHTML = `
@@ -355,6 +408,7 @@
 
         try {
             if (!currentChatId) {
+                // First message: create a new chat and get an AI-generated title
                 const response = await fetch('/new/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -371,6 +425,7 @@
                 addMessage(data.answer, 'bot');
 
             } else {
+                // Subsequent messages: append to the existing chat
                 const response = await fetch('/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -386,6 +441,9 @@
         }
     });
 
+    // RENAME POPUP HANDLERS
+    // Confirms the rename by calling the backend
+    // and updating the sidebar and header text
     confirmRenameBtn.addEventListener('click', async function() {
         const newTitle = renameInput.value.trim();
         if (chatToRename && newTitle) {
@@ -415,6 +473,10 @@
         renamePopup.classList.remove('show');
     });
 
+    // DELETE POPUP HANDLERS
+    // Confirms deletion by calling the backend,
+    // removes the row from the sidebar, and resets
+    // to a new chat if the deleted one was active
     confirmDeleteBtn.addEventListener('click', async function() {
         if (chatToDelete) {
             try {
@@ -441,6 +503,8 @@
         deletePopup.classList.remove('show');
     });
 
+    // CLOSE POPUPS ON BACKGROUND CLICK
+    // Clicking outside the popup card dismisses it
     renamePopup.addEventListener('click', function(e) {
         if (e.target === renamePopup) {
             chatToRename = null;
@@ -456,6 +520,9 @@
         }
     });
 
+    // CLOSE DROPDOWN ON OUTSIDE CLICK
+    // Hides any open options menus when clicking
+    // anywhere else on the page
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.chat-options-btn') && !e.target.closest('.chat-options-menu')) {
             document.querySelectorAll('.chat-options-menu').forEach(menu => {
@@ -464,13 +531,14 @@
         }
     });
 
+    // Submit rename popup on Enter key press
     renameInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             confirmRenameBtn.click();
         }
     });
 
-    // Start the app
+    // Initialize the app by loading the user's chat history
     loadUserChats();
 </script>
 </body>
