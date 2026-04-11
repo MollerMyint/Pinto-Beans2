@@ -399,7 +399,7 @@ body {
 }
 
 /*
-   USER BAR
+   USERBAR AT BOTTOM OF SIDEBAR
    Displays the mascot image and greeting
    at the bottom of the sidebar
 */
@@ -425,6 +425,32 @@ body {
     font-size: 15px;
     font-weight: 500;
     color: #ffffff;
+}
+
+/* Logout button */
+.logout-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 184, 29, 0.2);
+    color: #FFB81D;
+    transform: none;
+    box-shadow: none;
+}
+
+.logout-btn .material-symbols-outlined {
+    font-size: 22px;
+    font-variation-settings: 'wght' 300;
 }
 
 /*

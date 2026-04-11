@@ -277,6 +277,12 @@ def signup():
             return render_template("signup.html", error="Something went wrong, please try again.")
     return render_template("signup.html")
 
+# Route to logout
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/')
+
 # Helper functions 
 def hashPassword(plainText):
     pwd_salt = plainText+s

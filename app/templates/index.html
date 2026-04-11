@@ -35,6 +35,9 @@
             <div class="user-bar">
                 <img src="{{ url_for('static', filename='BillyBronco.png') }}" class="user-avatar" alt="BillyBronco">
                 <span class="user-greeting">Hello, {{ username }}!</span>
+                <button class="logout-btn" id="logout-btn" title="Logout">
+                    <span class="material-symbols-outlined">logout</span>
+                </button>
             </div>
         </div>
 
@@ -542,6 +545,11 @@
         if (e.key === 'Enter') {
             confirmRenameBtn.click();
         }
+    });
+
+    // Logout button
+    document.getElementById('logout-btn').addEventListener('click', function() {
+        window.location.href = '/logout';
     });
 
     // Initialize the app by loading the user's chat history
