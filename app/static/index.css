@@ -618,3 +618,43 @@ body {
     transform: translateY(0);
   }
 }
+
+/*Copy response to clipboard*/
+.message-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.action-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+
+.action-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: #005030;
+    transform: none;
+    box-shadow: none;
+}
+
+.action-btn .material-symbols-outlined {
+    font-size: 18px;
+    font-variation-settings: 'wght' 300;
+}
+
+/*Regenerate response*/
+.regenerate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

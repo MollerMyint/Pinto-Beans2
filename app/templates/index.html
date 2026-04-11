@@ -90,7 +90,6 @@
     const newChatBtn = document.getElementById("new-chat-btn");
     const chatHistory = document.getElementById("chat-history");
     const chatHeader = document.querySelector(".chat-header");
-
     let currentChatId = null;
 
     // Rename/delete popup elements
@@ -104,6 +103,8 @@
     const confirmDeleteBtn = document.getElementById("confirm-delete");
     const cancelDeleteBtn = document.getElementById("cancel-delete");
     let chatToDelete = null;
+
+    let lastQuestion = null;
 
     // Auto-resize textarea as user types
     input.addEventListener('input', function () {
@@ -173,14 +174,67 @@
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
         
-        // URL detection
         const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
-        
         const linkedText = text.replace(urlRegex, function(match, url, punctuation) {
             return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
         });
         
-        messageDiv.innerHTML = linkedText;
+        if (sender === 'bot') {
+        messageDiv.innerHTML = `
+            <div class="message-text">${linkedText}</div>
+            <div class="message-actions">
+                <button class="action-btn copy-btn" title="Copy">
+                    <span class="material-symbols-outlined">content_copy</span>
+                </button>
+                <button class="action-btn regenerate-btn" title="Regenerate">
+                    <span class="material-symbols-outlined">replay</span>
+                </button>
+            </div>
+        `;
+
+        messageDiv.querySelector('.copy-btn').addEventListener('click', function() {
+            const textToCopy = messageDiv.querySelector('.message-text').innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const icon = this.querySelector('.material-symbols-outlined');
+                icon.textContent = 'check';
+                setTimeout(() => icon.textContent = 'content_copy', 2000);
+            });
+        });
+
+        messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
+            if (!currentChatId || !lastQuestion) return;
+
+            // Disable button while regenerating
+            this.disabled = true;
+            const icon = this.querySelector('.material-symbols-outlined');
+            icon.style.animation = 'spin 1s linear infinite';
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: lastQuestion, chat_id: currentChatId })
+                });
+                const data = await response.json();
+
+                // New response with clickable link
+                const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
+                const linkedAnswer = data.answer.replace(urlRegex, function(match, url, punctuation) {
+                    return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
+                });
+                messageDiv.querySelector('.message-text').innerHTML = linkedAnswer;
+            } catch (error) {
+                console.error('Regenerate failed:', error);
+            }
+
+            this.disabled = false;
+            icon.style.animation = '';
+        });
+        
+        } else {
+            messageDiv.innerHTML = linkedText;
+        }
+        
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -272,6 +326,7 @@
         e.preventDefault();
         const question = input.value.trim();
         if (!question) return;
+        lastQuestion = question; 
 
         addMessage(question, 'user');
 
