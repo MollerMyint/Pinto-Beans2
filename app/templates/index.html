@@ -1,84 +1,348 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Search Page</title>
+    <title>BillyBeans Bot</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">CPP AI Chatbot</div>
+    <div class="app-container">
+        <!--Code for side bar-->
+        <div class = "sidebar">
+            <div class="sidebar-header">
+            <div class="logo">🫘</div>
+            <span class="app-name">BillyBeans Bot</span>
+        </div>
 
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot-message">
-                Hi! Ask me a question.
+            <button class = "new-chat-btn" id = "new-chat-btn">
+                <span> New Chat +</span>
+            </button>
+
+            <div class="chat-history" id="chat-history">
+            <!-- Will later load chats from database -->
             </div>
         </div>
 
-        <form id="chat-form" class="chat-form">
-            <input 
-                type="text"
-                id="corpus_question"
-                name="corpus_question"
-                placeholder="Type your question here..."
-                required>
-            <button type="submit">Send</button>
-        </form>
+        <!--Main Chat Box-->
+        <div class="chat-container">
+            <div class="chat-header">Current Chat Name</div>
+
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot-message">
+                    Welcome to the BillyBean Bot! Type a question to get started.
+                </div>
+            </div>
+
+            <form id="chat-form" class="chat-form">
+                <input 
+                    type="text"
+                    id="corpus_question"
+                    name="corpus_question"
+                    placeholder="Type your question here..."
+                    required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rename Popup -->
+    <div id="rename-popup" class="popup">
+        <div class="popup-content">
+            <h3>Rename Chat</h3>
+            <input type="text" id="rename-input" class="popup-input" placeholder="Enter new chat name...">
+            <div class="popup-buttons">
+                <button class="popup-btn cancel-btn" id="cancel-rename">Cancel</button>
+                <button class="popup-btn confirm-btn" id="confirm-rename">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Popup -->
+    <div id="delete-popup" class="popup">
+        <div class="popup-content">
+            <h3>Delete Chat</h3>
+            <p>Are you sure you want to delete the following chat?</p>
+            <p class="chat-to-delete"></p>
+            <div class="popup-buttons">
+                <button class="popup-btn cancel-btn" id="cancel-delete">No</button>
+                <button class="popup-btn confirm-btn" id="confirm-delete">Yes</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const form = document.getElementById("chat-form");
-        const input = document.getElementById("corpus_question");
-        const chatMessages = document.getElementById("chat-messages");
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("corpus_question");
+    const chatMessages = document.getElementById("chat-messages");
+    const newChatBtn = document.getElementById("new-chat-btn");
+    const chatHistory = document.getElementById("chat-history");
+    const chatHeader = document.querySelector(".chat-header");
 
-        form.addEventListener("submit", async function(e) {
-            e.preventDefault();
+    let currentChatId = null;
 
-            const question = input.value.trim();
-            if (!question) return;
+    // Rename/delete popup elements
+    const renamePopup = document.getElementById("rename-popup");
+    const renameInput = document.getElementById("rename-input");
+    const confirmRenameBtn = document.getElementById("confirm-rename");
+    const cancelRenameBtn = document.getElementById("cancel-rename");
+    let chatToRename = null;
+    
+    const deletePopup = document.getElementById("delete-popup");
+    const confirmDeleteBtn = document.getElementById("confirm-delete");
+    const cancelDeleteBtn = document.getElementById("cancel-delete");
+    let chatToDelete = null;
 
-            // Show user's message
-            const userMessage = document.createElement("div");
-            userMessage.className = "message user-message";
-            userMessage.textContent = question;
-            chatMessages.appendChild(userMessage);
+    async function loadUserChats() {
+        try {
+            const response = await fetch(`/user/chats`);
+            const data = await response.json();
+            
+            chatHistory.innerHTML = '';
+            
+            data.chats.forEach(chat => {
+                addChatToSidebar(chat.chat_id, chat.title);
+            });
 
-            // Show loading message
-            const loadingMessage = document.createElement("div");
-            loadingMessage.className = "message bot-message";
-            loadingMessage.innerHTML = `
-                <div class="loading">
-                    <div class="loading-spinner"></div>
-                    <span>Thinking...</span>
-                </div>
-            `;
-            chatMessages.appendChild(loadingMessage);
+            // Start on a blank unsaved chat every time
+            currentChatId = null;
+            chatMessages.innerHTML = '';
+            addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+            chatHeader.textContent = 'New Chat';
 
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (error) {
+            console.error('Error loading chats:', error);
+        }
+    }
 
-            // Clear input
-            input.value = "";
+    // prepend parameter defaults to false for initial load
+    function addChatToSidebar(chatId, title, prepend = false) {
+        const chatItem = document.createElement('div');
+        chatItem.className = 'chat-history-item';
+        chatItem.dataset.chatId = chatId;
+        chatItem.innerHTML = `
+            <span class="chat-name">${title}</span>
+            <button class="chat-options-btn">⋮</button>
+            <div class="chat-options-menu">
+                <button class="option-rename">Rename</button>
+                <button class="option-delete">Delete</button>
+            </div>
+        `;
+        if (prepend) {
+            chatHistory.prepend(chatItem);
+        } else {
+            chatHistory.appendChild(chatItem);
+        }
+        attachChatItemListeners(chatItem);
+    }
 
-            try {
-                const response = await fetch("/ask", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ corpus_question: question })
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        
+        // URL detection
+        const urlRegex = /(https?:\/\/[^\s]+?)([.,;:!?)\]}\-'"]*(?=\s|$))/g;
+        
+        const linkedText = text.replace(urlRegex, function(match, url, punctuation) {
+            // Disinclude trailing puncuation to not alter link
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${punctuation}`;
+        });
+        
+        messageDiv.innerHTML = linkedText;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function attachChatItemListeners(chatItem) {
+        chatItem.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('chat-options-btn') && 
+                !e.target.closest('.chat-options-menu')) {
+                const chatId = parseInt(this.dataset.chatId);
+                const chatName = this.querySelector('.chat-name').textContent;
+                loadChat(chatId, chatName);
+            }
+        });
+
+        const optionsBtn = chatItem.querySelector('.chat-options-btn');
+        optionsBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = this.nextElementSibling;
+            document.querySelectorAll('.chat-options-menu').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            menu.classList.toggle('show');
+        });
+
+        const renameBtn = chatItem.querySelector('.option-rename');
+        renameBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const chatNameSpan = chatItem.querySelector('.chat-name');
+            chatToRename = { element: chatNameSpan, chatId: chatItem.dataset.chatId };
+            renameInput.value = chatNameSpan.textContent;
+            renamePopup.classList.add('show');
+            setTimeout(() => renameInput.focus(), 100);
+            this.closest('.chat-options-menu').classList.remove('show');
+        });
+
+        const deleteBtn = chatItem.querySelector('.option-delete');
+        deleteBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const chatName = chatItem.querySelector('.chat-name').textContent;
+            chatToDelete = { element: chatItem, chatId: chatItem.dataset.chatId };
+            document.querySelector('.chat-to-delete').textContent = `"${chatName}"`;
+            deletePopup.classList.add('show');
+            this.closest('.chat-options-menu').classList.remove('show');
+        });
+    }
+
+    async function loadChat(chatId, chatName) {
+        currentChatId = chatId;
+        chatHeader.textContent = chatName;
+        
+        document.querySelectorAll('.chat-history-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add('active');
+        
+        try {
+            const response = await fetch(`/chats/${chatId}/messages`);
+            const data = await response.json();
+            
+            chatMessages.innerHTML = '';
+            
+            data.messages.forEach(msg => {
+                addMessage(msg.question, 'user');
+                addMessage(msg.answer, 'bot');
+            });
+            
+            if (data.messages.length === 0) {
+                addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        }
+    }
+
+    newChatBtn.addEventListener('click', function() {
+        // Opens to unsaved new chat on load
+        if (currentChatId === null) return;
+
+        currentChatId = null;
+        chatMessages.innerHTML = '';
+        addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+        chatHeader.textContent = 'New Chat';
+
+        document.querySelectorAll('.chat-history-item').forEach(item => {
+            item.classList.remove('active');
+        });
+    });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+
+        addMessage(question, 'user');
+        input.value = '';
+
+        const loadingMessage = document.createElement('div');
+        loadingMessage.className = 'message bot-message';
+        loadingMessage.innerHTML = `<div class="loading"><div class="loading-spinner"></div><span>Thinking...</span></div>`;
+        chatMessages.appendChild(loadingMessage);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            if (!currentChatId) {
+                // Actually creates chat upon user input
+                const response = await fetch('/new/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
                 });
-
                 const data = await response.json();
 
-                // Replace loading with actual answer
-                loadingMessage.textContent = data.answer;
-            } catch (error) {
-                loadingMessage.textContent = "Something went wrong. Please try again.";
-                console.error(error);
-            }
+                currentChatId = data.chat_id;
 
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        });
-    </script>
-</body>
-</html>
+                // Update header with agent-generated title
+                chatHeader.textContent = data.title;
+
+                // Add to top of sidebar with agent-generated title
+                addChatToSidebar(data.chat_id, data.title, true);
+                document.querySelector(`[data-chat-id="${data.chat_id}"]`)?.classList.add('active');
+
+                loadingMessage.remove();
+                addMessage(data.answer, 'bot');
+
+            } else {
+                // Subsequent questions in existing chat
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, chat_id: currentChatId })
+                });
+                const data = await response.json();
+                loadingMessage.remove();
+                addMessage(data.answer, 'bot');
+            }
+        } catch (error) {
+            loadingMessage.textContent = 'Something went wrong. Please try again.';
+            console.error(error);
+        }
+    });
+
+    cancelRenameBtn.addEventListener('click', function() {
+        chatToRename = null;
+        renameInput.value = '';
+        renamePopup.classList.remove('show');
+    });
+
+    // Delete (only in UI rn since no backend route yet)
+    confirmDeleteBtn.addEventListener('click', function() {
+        if (chatToDelete) {
+            chatToDelete.element.remove();
+            if (currentChatId == chatToDelete.chatId) {
+                currentChatId = null;
+                chatMessages.innerHTML = '';
+                chatHeader.textContent = 'BillyBeans Bot';
+            }
+        }
+        chatToDelete = null;
+        deletePopup.classList.remove('show');
+    });
+
+    cancelDeleteBtn.addEventListener('click', function() {
+        chatToDelete = null;
+        deletePopup.classList.remove('show');
+    });
+
+    renamePopup.addEventListener('click', function(e) {
+        if (e.target === renamePopup) {
+            chatToRename = null;
+            renameInput.value = '';
+            renamePopup.classList.remove('show');
+        }
+    });
+
+    deletePopup.addEventListener('click', function(e) {
+        if (e.target === deletePopup) {
+            chatToDelete = null;
+            deletePopup.classList.remove('show');
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.chat-options-btn') && !e.target.closest('.chat-options-menu')) {
+            document.querySelectorAll('.chat-options-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+
+    renameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            confirmRenameBtn.click();
+        }
+    });
+
+    // Start the app
+    loadUserChats();
+</script>
