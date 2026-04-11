@@ -399,6 +399,35 @@ body {
 }
 
 /*
+   USER BAR
+   Displays the mascot image and greeting
+   at the bottom of the sidebar
+*/
+.user-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid #A5D55C;
+    margin-top: auto;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #A5D55C;
+    flex-shrink: 0;
+}
+
+.user-greeting {
+    font-size: 15px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+/*
    MAIN CHAT CONTAINER
    Right-side panel that holds the header,
    message feed, and input form

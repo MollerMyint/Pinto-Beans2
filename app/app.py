@@ -49,7 +49,11 @@ def home():
 
 @app.route('/chatUI')
 def chatUI():
-    return render_template("index.html")
+    user_id = session.get("user_id")
+    mycursor.execute("SELECT username FROM users WHERE user_id = %s", (user_id,))
+    result = mycursor.fetchone()
+    username = result[0] if result else "User"
+    return render_template("index.html", username=username)
 
 @app.route('/discord/ask', methods=['POST'])
 def ask_discord_agent():

@@ -30,6 +30,12 @@
             <!-- Chat history list — populated dynamically from the database -->
             <div class="chat-history" id="chat-history">
             </div>
+
+            <!-- User bar at the bottom of the sidebar -->
+            <div class="user-bar">
+                <img src="{{ url_for('static', filename='BillyBronco.png') }}" class="user-avatar" alt="BillyBronco">
+                <span class="user-greeting">Hello, {{ username }}!</span>
+            </div>
         </div>
 
         <!-- ======MAIN CHAT AREA====== -->
