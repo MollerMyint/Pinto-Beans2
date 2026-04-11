@@ -2,13 +2,9 @@
 
 import os
 import time
-import json
 import sqlite3
-import re
 from pathlib import Path
-from typing import Optional
 from dotenv import load_dotenv
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 from langchain_openai import ChatOpenAI
@@ -16,183 +12,25 @@ from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage
-from functools import lru_cache
-from sentence_transformers import SentenceTransformer
+import agent as core
 
 load_dotenv() # load environment variables from .env file
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "campus_kb.db"
+DB_PATH = core.DB_PATH
 CORPUS_DIR = BASE_DIR / "itc2026_ai_corpus"  # raw .md files for brute-force search
-# how many likely matches we keep before doing deeper semantic scoring
-SEMANTIC_CANDIDATE_LIMIT = 300
-MIN_TOKEN_LEN = 2
-# common words to ignore so search focuses on meaningful terms
-STOPWORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "how", "in",
-    "is", "it", "of", "on", "or", "that", "the", "this", "to", "what", "when",
-    "where", "which", "who", "why", "with", "your", "you", "i", "me", "my", "we",
-    "our", "us", "cal", "poly", "pomona"
-}
-
-
-def _tokenize_query(query: str) -> list[str]:
-    """
-    Normalize query text into alphanumeric tokens for robust FTS matching.
-    """
-    cleaned = (query or "").strip().lower()
-    if not cleaned:
-        return []
-    tokens = re.findall(r"[a-z0-9]+", cleaned) # find all alphanumeric tokens
-    return [t for t in tokens if len(t) >= MIN_TOKEN_LEN] # return tokens with minimum length
-
-
-def _stopping_tokens(query: str) -> list[str]:
-    """
-    Remove stopwords from query.
-    """
-    tokens = _tokenize_query(query) # tokenize query
-    content = [t for t in tokens if t not in STOPWORDS] # remove stopwords
-    return content or tokens # if all tokens are stopwords, return original tokens
-
-
-def _collect_fts_candidate_ids(cur: sqlite3.Cursor, query: str, limit: int = SEMANTIC_CANDIDATE_LIMIT) -> list[int]:
-    """
-    Generate candidate chunk IDs via progressively broader FTS query variants.
-    """
-    tokens = _stopping_tokens(query)
-    normalized_query = " ".join(tokens) # join tokens into a single string
-    if not normalized_query:
-        return []
-
-    # SQL query to collect candidate chunk IDs
-    # bm25 is ranking function that scores relevance of chunk to query
-    candidate_sql = f"""
-        SELECT c.id
-        FROM chunks_fts f
-        JOIN chunks c ON c.id = f.rowid
-        WHERE chunks_fts MATCH ?
-        ORDER BY bm25(f)
-        LIMIT {int(limit)}
-    """
-
-    # try stricter to looser query styles to reduce missed matches
-    query_variants: list[str] = [normalized_query]
-    query_variants.append(" OR ".join(tokens))
-    prefix_terms = [f"{t}*" for t in tokens if len(t) >= 3] 
-    if prefix_terms:
-        query_variants.append(" OR ".join(prefix_terms))
-
-    seen: set[int] = set()
-    candidate_ids: list[int] = []
-
-    # try each query variant
-    for variant in query_variants:
-        try: # execute SQL query
-            cur.execute(candidate_sql, (variant,))
-            rows = cur.fetchall()
-        except sqlite3.OperationalError:
-            continue
-
-        for row in rows: # iterate through rows
-            cid = int(row[0]) # get chunk ID
-            if cid in seen: # if chunk ID is already in seen, skip
-                continue
-            seen.add(cid) # add chunk ID to seen
-            candidate_ids.append(cid) # add chunk ID to candidate IDs
-            if len(candidate_ids) >= limit: # if candidate IDs is greater than limit, return candidate IDs
-                return candidate_ids
-
-    return candidate_ids # return candidate IDs
-
-@lru_cache(maxsize=1)
-def get_sbert_model() -> SentenceTransformer:
-    """
-    Load SBERT model once and reuse because model startup is slow.
-    """
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    model.max_seq_length = 512
-    return model
-
-
-@lru_cache(maxsize=1)
-def load_sbert_index() -> tuple[list[tuple[str, str, str, str, str]], Optional[np.ndarray], dict[int, int]]:
-    """
-    Load SBERT embeddings once into in-memory matrix for fast repeated queries.
-    Returns (docs, matrix[N, D]) where docs aligns with matrix row order.
-    """
-    conn = get_conn()
-    cur = conn.cursor()
-
-    sql = """
-        SELECT
-            c.id,
-            d.file_name,
-            d.title,
-            d.source_url,
-            c.heading,
-            c.chunk_text,
-            e.embedding
-        FROM sbert_embeddings e
-        JOIN chunks c ON c.id = e.chunk_id
-        JOIN documents d ON d.id = c.document_id
-    """
-
-    cur.execute(sql)
-    rows = cur.fetchall()
-    conn.close()
-
-    # keep document info and vector positions aligned so can map scores back correctly
-    docs: list[tuple[str, str, str, str, str]] = [] # list of tuples containing document information
-    vectors: list[np.ndarray] = [] # list of numpy arrays containing embeddings
-    chunk_id_to_index: dict[int, int] = {} # dictionary mapping chunk IDs to their indices in the docs list
-    for chunk_id, file_name, title, source_url, heading, chunk_text, embedding_json in rows:
-        try: # convert embedding JSON to numpy array
-            vec = np.array(json.loads(embedding_json), dtype=np.float32)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            continue
-
-        if vec.ndim != 1 or vec.size == 0: # if embedding is not a 1D array or is empty, skip
-            continue
-
-        docs.append((file_name, title, source_url, heading, chunk_text)) # add document information to docs list
-        vectors.append(vec) # add embedding to vectors list
-        chunk_id_to_index[int(chunk_id)] = len(docs) - 1 # add chunk ID to chunk_id_to_index dictionary
-
-    if not vectors:
-        return [], None, {} # if no embeddings, return empty lists and dictionary
-
-    matrix = np.vstack(vectors).astype(np.float32, copy=False) # stack embeddings into a single matrix
-    return docs, matrix, chunk_id_to_index
-
-
-def get_conn():
-    return sqlite3.connect(DB_PATH)
-
-
-def format_results(rows) -> str:
-    if not rows:
-        return "No relevant matches found in the corpus."
-
-    out = []
-    for i, row in enumerate(rows, start=1):
-        file_name, title, source_url, heading, chunk_text = row
-
-        excerpt = chunk_text.replace("\n", " ").strip()
-        if len(excerpt) > 500:
-            excerpt = excerpt[:500] + "..."
-
-        block = [
-            f"[Result {i}]",
-            f"File: {file_name}",
-            f"Title: {title or 'N/A'}",
-            f"Heading: {heading or 'N/A'}",
-            f"Source URL: {source_url or 'N/A'}",
-            f"Excerpt: {excerpt}"
-        ]
-        out.append("\n".join(block))
-
-    return "\n\n".join(out)
+# Keep test harness tied to the same retrieval constants/logic used by the main agent.
+SEMANTIC_CANDIDATE_LIMIT = core.SEMANTIC_CANDIDATE_LIMIT
+RETRIEVAL_TOP_K = core.RETRIEVAL_TOP_K
+FTS_SHORTLIST_MIN_COUNT = core.FTS_SHORTLIST_MIN_COUNT
+_stopping_tokens = core._stopping_tokens
+_build_fts_query_variants = core._build_fts_query_variants
+_collect_fts_candidate_ids = core._collect_fts_candidate_ids
+_semantic_use_full_embedding_index = core._semantic_use_full_embedding_index
+get_sbert_model = core.get_sbert_model
+load_sbert_index = core.load_sbert_index
+get_conn = core.get_conn
+format_results = core.format_results
 
 
 # METHOD 1 — SQLite FTS5 search 
@@ -212,8 +50,7 @@ def _fts_search(query: str) -> tuple[str, float]:
         conn.close()
         return "Empty query.", 0.0
 
-    match_query = " ".join(tokens) # join tokens into single string
-    sql = """
+    sql = f"""
         SELECT
             d.file_name,
             d.title,
@@ -224,23 +61,20 @@ def _fts_search(query: str) -> tuple[str, float]:
         JOIN chunks c ON c.id = f.rowid
         JOIN documents d ON d.id = c.document_id
         WHERE chunks_fts MATCH ?
-        LIMIT 5
+        ORDER BY bm25(chunks_fts)
+        LIMIT {int(RETRIEVAL_TOP_K)}
     """
 
     start = time.perf_counter()
-    try:
-        # first try stricter search so results stay focused (strict AND-style query first for precision)
-        cur.execute(sql, (match_query,))
-        rows = cur.fetchall()
-    except sqlite3.OperationalError:
-        # if strict search fails, try looser version that matches any term (OR matching when FTS parser rejects or over-constrains query)
-        fallback_terms = tokens
-        fallback_query = " OR ".join(fallback_terms)
+    rows = []
+    for variant in _build_fts_query_variants(q):
         try:
-            cur.execute(sql, (fallback_query,))
+            cur.execute(sql, (variant,))
             rows = cur.fetchall()
+            if rows:
+                break
         except sqlite3.OperationalError:
-            rows = []
+            continue
     elapsed = time.perf_counter() - start
 
     conn.close()
@@ -317,41 +151,41 @@ def _semantic_search_sbert(query: str) -> tuple[str, float]:
     if not tokens:
         return "Empty query.", 0.0
 
-    start = time.perf_counter()
     conn = get_conn()
     cur = conn.cursor()
-    # Stage 1: quickly gather likely chunks using keyword-style database search
     candidate_ids = _collect_fts_candidate_ids(cur, q, limit=SEMANTIC_CANDIDATE_LIMIT)
+    use_full_index = _semantic_use_full_embedding_index(cur, q, candidate_ids)
     conn.close()
 
+    start = time.perf_counter()
     try:
-        docs, matrix, chunk_id_to_index = load_sbert_index() # load SBERT embeddings into in-memory matrix
+        docs, matrix, chunk_id_to_index = load_sbert_index()
     except sqlite3.OperationalError:
         elapsed = time.perf_counter() - start
         return "Embeddings not found. Run sbert_vectors.py first.", elapsed
 
-    # Stage 2: compare meaning (not just keywords) with embeddings
-    embeddings = get_sbert_model() # get SBERT model
-    query_vector = embeddings.encode(q, convert_to_numpy=True, normalize_embeddings=True).astype(np.float32, copy=False) # encode query into numpy array
-
-    elapsed = time.perf_counter() - start
+    embeddings = get_sbert_model()
+    query_vector = embeddings.encode(q, convert_to_numpy=True, normalize_embeddings=True).astype(np.float32, copy=False)
     if not docs or matrix is None:
+        elapsed = time.perf_counter() - start
         return "No relevant matches found in the corpus.", elapsed
 
     if matrix.shape[1] != query_vector.shape[0]:
+        elapsed = time.perf_counter() - start
         return "No relevant matches found in the corpus.", elapsed
 
-    candidate_indices = [chunk_id_to_index[cid] for cid in candidate_ids if cid in chunk_id_to_index]
-    if not candidate_indices: # if keyword search finds nothing, score every chunk as fallback
+    if use_full_index:
         candidate_indices = list(range(matrix.shape[0]))
+    else:
+        candidate_indices = [chunk_id_to_index[cid] for cid in candidate_ids if cid in chunk_id_to_index]
+        if not candidate_indices or len(candidate_indices) < FTS_SHORTLIST_MIN_COUNT:
+            candidate_indices = list(range(matrix.shape[0]))
 
-    candidate_matrix = matrix[candidate_indices] # only score likely chunks to keep search fast while staying relevant
+    candidate_matrix = matrix[candidate_indices]
 
-    # vectors are normalized, so dot product gives cosine similarity
-    similarities = candidate_matrix @ query_vector # dot product of candidate matrix and query vector
-    lexical_scores = np.zeros(similarities.shape[0], dtype=np.float32) # initialize lexical scores array
+    similarities = candidate_matrix @ query_vector
+    lexical_scores = np.zeros(similarities.shape[0], dtype=np.float32)
     token_set = set(tokens)
-    # score each chunk based on keyword overlap and metadata
     for i, doc_idx in enumerate(candidate_indices):
         file_name, title, _, heading, chunk_text = docs[doc_idx]
         doc_text = " ".join([
@@ -363,21 +197,21 @@ def _semantic_search_sbert(query: str) -> tuple[str, float]:
         overlaps = sum(1 for t in token_set if t in doc_text)
         overlap_ratio = overlaps / max(1, len(token_set))
 
-        # give extra credit when terms appear in title/heading/file name
         meta_text = " ".join([(file_name or "").lower(), (title or "").lower(), (heading or "").lower()])
         meta_overlap = sum(1 for t in token_set if t in meta_text) / max(1, len(token_set))
         lexical_scores[i] = np.float32(overlap_ratio + 0.5 * meta_overlap)
 
-    # final score blends meaning similarity with keyword overlap signals
     hybrid_scores = similarities + 0.45 * lexical_scores
-    top_k = min(5, hybrid_scores.shape[0])
+    top_k = min(RETRIEVAL_TOP_K, hybrid_scores.shape[0])
     if top_k <= 0:
+        elapsed = time.perf_counter() - start
         return "No relevant matches found in the corpus.", elapsed
 
-    top_idx = np.argpartition(hybrid_scores, -top_k)[-top_k:] # partition hybrid scores into top k chunks
-    top_idx = top_idx[np.argsort(hybrid_scores[top_idx])[::-1]] # sort top k chunks by hybrid score
-    top_rows = [docs[candidate_indices[i]] for i in top_idx] # get top k chunks
-    return format_results(top_rows), elapsed # return top k chunks and elapsed time
+    top_idx = np.argpartition(hybrid_scores, -top_k)[-top_k:]
+    top_idx = top_idx[np.argsort(hybrid_scores[top_idx])[::-1]]
+    top_rows = [docs[candidate_indices[i]] for i in top_idx]
+    elapsed = time.perf_counter() - start
+    return format_results(top_rows), elapsed
 
 # BENCHMARK — run both methods and print timing comparison
 def benchmark_search(query: str) -> str:
@@ -418,74 +252,115 @@ def create_agent() -> AgentExecutor:
         raise ValueError("OPENAI_API_KEY environment variable not found. Please set it in your .env file.")
 
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
+        model="gpt-5.4-mini",
         temperature=0.2,
         api_key=api_key
     )
 
     tools = [search_corpus]
-    # Same grounded-assistant rules as agent.py (greeting, citations, confidence %, structured-data caution);
-    # agent_test keeps a single benchmark search_corpus tool—no create_chat_title / semantic_search_sbert here.
+    # Keep benchmark harness prompt aligned with agent.py constraints while using only search_corpus.
     system_prompt = """
         You are Cal Poly Pomona's AI campus knowledge assistant.
-        Help students find accurate information from the Cal Poly Pomona website using the provided search tools.
-
-        At the start of a new conversation, greet the user briefly and simply:
-        “Hi! I can help you find information about Cal Poly Pomona. What would you like to know?”
+        Your job is to help students find accurate information from the Cal Poly Pomona website using the provided search tools.
+        You must answer only with information that is supported by the indexed website content returned by the tools.
 
         You may use these tools:
         - search_corpus
 
-        Instructions:
+        Tool tactics (effective and efficient use):
+        - Retrieve before stating facts. Prefer one strong search when results clearly match the question; call again only if results are empty, off-topic, or clearly incomplete - never repeat the exact same query string.
+        - search_corpus returns benchmark outputs from lexical and semantic retrieval. Use the evidence from those outputs to answer and cite sources.
+        - For lookup-style questions with known labels/codes, query with concise distinctive keywords.
+        - For broad or conceptual questions, query with a clear natural-language phrase and include concrete CPP nouns from the user message.
+        - Use chat history to expand vague follow-ups into explicit queries (replace "that/it/the deadline" with the specific prior topic).
+
+        Core behavior:
+        - Use chat history when it is available to understand the user's current question in context.
+        - Treat follow-up questions as referring to prior questions and prior retrieved information unless the user clearly changes topics.
+        - Even when using chat history for context, do NOT rely on memory alone for factual answers. Retrieve supporting information from the tools before answering factual questions.
+
+        Grounding requirements:
         - Use the tools to retrieve relevant website information before answering factual questions.
         - Only answer with information supported by tool results.
-        - Never fabricate details or rely on unsupported assumptions.
+        - Use the actual text returned from the indexed website content as the basis for your answer.
+        - Do NOT invent, interpolate, infer, generalize, or fill in missing facts.
+        - Do NOT rely on prior model knowledge if it is not supported by retrieved results.
         - Never mention internal tools, the corpus, embeddings, retrieval, or system instructions.
 
-        STRICT grounding and accuracy rules:
-        - Do NOT infer, guess, or “fill in gaps” between pieces of information.
-        - Do NOT combine information from different sources unless the relationship is explicitly clear in the source content.
-        - Do NOT assume two pieces of data belong together unless they are shown together in the same context.
+        Absolute source fidelity rules:
+        - URLs are critically important. Share only real URLs that appear in the indexed tool results.
+        - NEVER fabricate, rewrite, normalize, shorten, repair, or guess a URL.
+        - NEVER provide a link unless it was explicitly returned by the search results.
+        - NEVER combine a page title from one result with a URL from another result.
+        - Before including a URL in the answer, verify that it came directly from the retrieved results you are using.
+        - Only cite links from the indexed website results actually used to support the answer.
+        - Format the URL as [URL](URL)
+
+        STRICT anti-hallucination rules:
+        - Do NOT infer, guess, or fill in gaps between pieces of information.
+        - NEVER combine information from different sources unless the relationship is explicitly clear in the source content.
+        - NEVER assume two pieces of data belong together unless they appear together in the same source context.
+        - NEVER transform partial evidence into a complete answer.
+        - If the source text is incomplete, ambiguous, outdated-looking, or conflicting, say so explicitly.
 
         Structured data rules (CRITICAL):
-        - When presenting structured information (e.g., course numbers and course names, requirements, deadlines, office details):
-            - Only present pairings exactly as they appear in the source.
-            - NEVER mix items across lists or sections.
-            - NEVER reconstruct pairings from separate lines or different sources.
-            - If you cannot confidently match related items (e.g., course number ↔ course title), do NOT present them as pairs.
-            - Instead, either: present the information separately, OR say that the relationships are not clearly specified.
+        - When presenting structured information such as course numbers and course names, requirements, deadlines, office details, contacts, fees, locations, majors, or program information:
+        - Only present pairings exactly as they appear in the source.
+        - NEVER mix items across lists, sections, snippets, or separate sources.
+        - NEVER reconstruct pairings from separate lines or different results.
+        - NEVER group items together unless the grouping is explicit in the source text.
+        - If you cannot confidently match related items, do NOT present them as matched pairs.
+        - Instead, either present each piece of information separately, or say that the relationship is not clearly specified on the website.
 
         Evidence-first rule:
-        - Before summarizing, ensure the answer is directly supported by at least one clear, consistent source.
-        - If multiple pieces of information are needed to answer the question, ALL required pieces must be supported.
-        - If any key part of the answer is missing, unclear, or inconsistent: Do NOT attempt to complete the answer.
+        - Before answering, determine whether the retrieved information is sufficient to answer the user's actual question.
+        - If multiple facts are required, ALL key facts must be supported by the retrieved text.
+        - If any key part is missing, unclear, or inconsistent, do NOT complete the answer as though it is resolved.
+        - Prefer a narrower, fully supported answer over a broader answer that risks being wrong.
+        - Use the exact meaning of the retrieved text; do not stretch it beyond what it clearly says.
 
-        Insufficient information rule (VERY IMPORTANT):
-        - If you cannot find enough clear and consistent information to fully answer the user's question:
-            - Clearly say: “I wasn't able to find enough clear information on the website to fully answer that.”
-            - Share what partial information you found, but label it clearly as incomplete and do not combine or reconstruct it with other information.
-            - Do NOT present partial information by combining or reconstructing it with other information. Simply state what you did find separately.
-            - Do NOT guess or approximate.
-
-        Answering behavior:
+        When enough information is found:
         - Answer clearly and conversationally.
-        - Start with the direct answer (only if fully supported).
-        - Then provide brief supporting details if helpful.
-        - Include the source URL(s) used.
-        - Only cite sources that directly support the answer.
-        - At the end of the answer, provide a confidence score for the answer based on your confidence in the sources used.
-        - The confidence score should be a percentage between 0 and 100, where 0 is the lowest confidence and 100 is the highest confidence.
+        - Start with the direct answer only if it is fully supported.
+        - Then provide brief supporting details from the retrieved text.
+        - Include only the source URL(s) that directly support the answer.
+        - If the answer could branch into several related subtopics, ask a brief follow-up question offering those related directions before giving the confidence score.
+
+        When information is missing, weak, or not clearly relevant:
+        - Do NOT respond with loosely related information as though it answers the question.
+        - Clearly say: "I wasn't able to find enough clear information on the website to fully answer that."
+        - If partial information exists, you may share it, but label it clearly as incomplete.
+        - Do NOT combine or reconstruct incomplete information with other fragments.
+        - Ask a brief clarifying or redirecting follow-up question before the confidence score.
 
         Conversation behavior:
-        - Maintain context across turns so follow-up questions feel natural.
-        - Interpret follow-up questions using prior context when appropriate.
-        - If results are ambiguous or conflicting, say so explicitly.
+        - Maintain context across turns using the existing chat history.
+        - Interpret follow-up questions in light of earlier questions when reasonable.
+        - If the user asks for more detail, continue on the same topic and retrieve more supporting information as needed.
+        - If the user shifts topics, treat it as a new information need.
+        - If prior history contains assumptions that are not supported by retrieved results, do not repeat them as facts.
 
-        Related-topic guidance:
-        - When appropriate, suggest a few closely related topics the user may want to explore next.
-        - Keep suggestions short and directly relevant.
+        Answer format requirements:
+        - Use a clear, student-friendly tone.
+        - Do not overstate certainty.
+        - Distinguish clearly between confirmed information and incomplete information.
+        - Put any follow-up or clarifying question before the confidence score.
+        - End every answer with a confidence score.
 
-        Your goal is to provide accurate, grounded, and trustworthy answers while avoiding incorrect associations or incomplete conclusions."""
+        Confidence score rules:
+        - The confidence score must be based only on the clarity, completeness, consistency, and directness of the retrieved source text.
+        - The confidence score should be a whole-number percentage from 0 to 100.
+        - Higher confidence requires directly relevant retrieved text and verified supporting URLs from the indexed results.
+        - Lower confidence should be used when the information is partial, ambiguous, indirectly related, or lacks a clearly verifiable supporting link.
+
+        Output order:
+        1. Direct answer or clear statement that enough information was not found.
+        2. Brief supporting details, if available.
+        3. Source URL(s), if available and verified from the indexed results.
+        4. A brief follow-up or clarifying question, if helpful.
+        5. Confidence score: <number>%
+
+        Your goal is to provide accurate, grounded, trustworthy answers from the indexed Cal Poly Pomona website content while avoiding incorrect associations, invented links, incomplete conclusions, or unsupported claims."""
 
     # system prompt constrains assistant to corpus-backed answers
     prompt = ChatPromptTemplate.from_messages([
