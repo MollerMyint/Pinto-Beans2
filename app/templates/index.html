@@ -261,6 +261,16 @@
         }
     });
 
+    // TIME-BASED GREETING
+    function getGreeting() {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 16) return 'Good Afternoon';
+        return 'Good Evening';
+    }
+
+    document.getElementById('landing-title').textContent = `${getGreeting()}, {{ username }}!`;
+
     // LOAD USER CHATS ON STARTUP
     // Fetches all saved chats from the database
     // and populates the sidebar history list
