@@ -6,35 +6,60 @@
 
 /* Background */
 body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    color: #e5e7eb;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #005030;
+    color: #ffffff;
     height: 100vh;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
 }
 
+
+/* Header row — bean emoji + title side by side */
+.auth-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+
+/* Bean logo beside the title */
+.auth-logo {
+    font-size: 2.4rem;
+    flex-shrink: 0;
+    animation: beanBounce 2.4s ease-in-out infinite;
+}
+
+@keyframes beanBounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-8px); }
+}
+
 /* Card container */
 .auth-container {
-    background: #111827;
+    background: #ffffff;
     padding: 40px;
     border-radius: 18px;
     width: 100%;
-    max-width: 400px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    max-width: 500px;
+    box-shadow: 0 20px 50px rgba(0, 80, 48, 0.3);
     text-align: center;
+    border: 2px solid #A5D55C;
 }
 
 /* Titles */
 h2 {
     margin-bottom: 10px;
     font-weight: 600;
+    color: #005030;
 }
 
 h4 {
     margin-bottom: 25px;
-    color: #9ca3af;
+    color: #4a7c59;
     font-weight: 400;
 }
 
@@ -44,10 +69,11 @@ input {
     padding: 14px;
     margin-bottom: 15px;
     border-radius: 10px;
-    border: 1px solid #374151;
-    background: #1f2937;
-    color: white;
+    border: 2px solid #A5D55C;
+    background: #f3f4f6;
+    color: #005030;
     font-size: 14px;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     outline: none;
     transition: 0.2s ease;
 }
@@ -58,44 +84,50 @@ input::placeholder {
 
 /* Focus effect */
 input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    border-color: #005030;
+    box-shadow: 0 0 8px rgba(165, 213, 92, 0.4);
+    background: #ffffff;
 }
 
-/* Primary button */
+/* Primary submit button */
 button {
     width: 100%;
     padding: 14px;
     border: none;
     border-radius: 10px;
-    background: #3b82f6;
-    color: white;
+    background: #A5D55C;
+    color: #005030;
     font-weight: 600;
+    font-size: 15px;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     cursor: pointer;
-    transition: 0.2s ease;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
     margin-top: 5px;
 }
 
-/* Hover */
+/* Gold-to-green gradient hover */
 button:hover {
-    background: #2563eb;
+    background: linear-gradient(to right, #FFB81D, #C8E639, #A5D55C);
+    box-shadow: 0 4px 12px rgba(255, 184, 29, 0.4);
 }
 
-/* Secondary button (Back) */
+/* Secondary button (Sign Up / Back) */
 button.secondary {
-    background: transparent;
-    border: 1px solid #374151;
+    background: #ffffff;
+    border: 2px solid #A5D55C;
+    color: #005030;
     margin-top: 10px;
 }
 
 button.secondary:hover {
-    background: #1f2937;
+    background: linear-gradient(to right, #FFB81D, #C8E639, #A5D55C);
+    box-shadow: 0 4px 12px rgba(255, 184, 29, 0.4);
+    border-color: transparent;
 }
 
 /* Error message */
 .error {
-    /* margin-top: 5px; */
     margin-bottom: 13px;
-    color: #f87171;
+    color: #dc2626;
     font-size: 14px;
 }

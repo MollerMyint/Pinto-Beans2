@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Search Page</title>
+        <title>Login - BillyBeans Bot</title>
         <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
     </head>
     <body>
         <div class="auth-container">
-            <h2>Welcome!</h2>
+            <div class="auth-header">
+                <span class="auth-logo">🫘</span>
+                <h2>Welcome to the BillyBeans Bot!</h2>
+            </div>
             <h4>Please Log In</h4>
             <form method="POST" action="/login">
                 <input type="text" name="username" placeholder="Username">
                 <input type="password" name="password" placeholder="Password">
+                {% if error %}
+                    <p class="error">{{error}}</p>
+                {% endif %}
                 <button type="submit">Submit</button>
-                <button class='secondary' type="button" onclick="location.href='/signup'">Sign Up</button>
+                <button class="secondary" type="button" onclick="location.href='/signup'">Sign Up</button>
             </form>
-            {% if error %}
-                <p class="error" >{{error}}</p>
-            {%endif%}
         </div>
     </body>
 </html>
