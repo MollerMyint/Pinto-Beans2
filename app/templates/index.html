@@ -15,14 +15,17 @@
         <!-- ======SIDEBAR====== -->
         <div class="sidebar">
 
-            <!-- Logo and app name -->
+            <!-- Logo, app name, sidebar collapse -->
             <div class="sidebar-header">
                 <div class="logo">🫘</div>
                 <span class="app-name">BillyBeans Bot</span>
+                <button class="sidebar-toggle" id="sidebar-toggle">
+                    <span class="material-symbols-outlined">side_navigation</span>
+                </button>
             </div>
 
             <!-- Button to start a new unsaved chat -->
-            <button class="new-chat-btn" id="new-chat-btn">
+            <button class="new-chat-btn" id="new-chat-btn" data-tooltip="New Chat">
                 <span>New Chat</span>
                 <span class="material-symbols-outlined">chat_add_on</span>
             </button>
@@ -35,7 +38,7 @@
             <div class="user-bar">
                 <img src="{{ url_for('static', filename='BillyBronco.png') }}" class="user-avatar" alt="BillyBronco">
                 <span class="user-greeting">Hello, {{ username }}!</span>
-                <button class="logout-btn" id="logout-btn" title="Logout">
+                <button class="logout-btn" id="logout-btn" data-tooltip="Logout">
                     <span class="material-symbols-outlined">logout</span>
                 </button>
             </div>
@@ -171,6 +174,11 @@
     const cancelDeleteBtn  = document.getElementById("cancel-delete");
     let chatToDelete = null;
 
+    //Sidebar
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+
+
     // Starting questions
     const FALLBACK_QUESTIONS = [
         "What clubs and organizations can I join?",
@@ -271,6 +279,27 @@
 
     document.getElementById('landing-title').textContent = `${getGreeting()}, {{ username }}!`;
 
+    // SIDEBAR TOGGLE
+    sidebarToggleBtn.addEventListener('click', function() {
+        sidebar.classList.toggle('collapsed');
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        sidebarToggleBtn.setAttribute('data-tooltip', isCollapsed ? 'Open Sidebar' : 'Close Sidebar');
+        localStorage.setItem('sidebarCollapsed', isCollapsed);
+    });
+
+    // Also set correct label on restore
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+        sidebarToggleBtn.setAttribute('data-tooltip', 'Open Sidebar');
+    } else {
+        sidebarToggleBtn.setAttribute('data-tooltip', 'Close Sidebar');
+    }
+
+    // Restore saved state on load
+    if (localStorage.getItem('sidebarCollapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+    }
+
     // LOAD USER CHATS ON STARTUP
     // Fetches all saved chats from the database
     // and populates the sidebar history list
@@ -284,7 +313,7 @@
                 addChatToSidebar(chat.chat_id, chat.title);
             });
 
-            currentChatId        = null;
+            currentChatId          = null;
             chatHeader.textContent = 'New Chat';
             showLanding();
 
@@ -305,7 +334,7 @@
         chatItem.innerHTML = `
             <span class="chat-icon material-symbols-outlined">chat</span>
             <span class="chat-name">${title}</span>
-            <button class="chat-options-btn">⋮</button>
+            <button class="chat-options-btn" data-tooltip="Options">⋮</button>
             <div class="chat-options-menu">
                 <button class="option-rename">
                     <span class="material-symbols-outlined">edit</span>
@@ -656,4 +685,4 @@
 
     </script>
 </body>
-</html>
+</html>X

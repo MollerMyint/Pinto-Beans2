@@ -32,6 +32,35 @@ body {
     height: 100vh;
 }
 
+/* Universal custom tooltip (for when you hover over icons) */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #003d24;
+    color: #ffffff;
+    font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #A5D55C;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 9999;
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
 /*
    SIDEBAR
    Fixed-width left panel containing the logo,
@@ -46,12 +75,36 @@ body {
     padding: 10px 0;
 }
 
-/* Logo and app name row at the top of the sidebar */
+/* Logo, app name, sidebar collapse row at the top of the sidebar */
 .sidebar-header {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 0 20px 15px 20px;
+}
+
+.sidebar-toggle {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;   /* pushes it to the far right */
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 184, 29, 0.2);
+}
+
+.sidebar-toggle .material-symbols-outlined {
+    font-size: 22px;
+    font-variation-settings: 'wght' 300;
 }
 
 /* Bean emoji logo container */
@@ -72,6 +125,82 @@ body {
     font-size: 20px;
     font-weight: 600;
     color: #FFFFFF;
+}
+
+/* Collapsed state — narrow strip */
+.sidebar.collapsed {
+    width: 64px;
+}
+
+/* Hide all text and extra elements when collapsed */
+.sidebar.collapsed .app-name,
+.sidebar.collapsed .new-chat-btn span:first-child,
+.sidebar.collapsed .chat-name,
+.sidebar.collapsed .chat-options-btn,
+.sidebar.collapsed .user-greeting,
+.sidebar.collapsed .logout-btn {
+    display: none;
+}
+
+/* Center the header when collapsed */
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    padding: 0 0 15px 0;
+}
+
+/* In collapsed mode, the toggle button sits centered in the header */
+.sidebar.collapsed .sidebar-toggle {
+    margin-left: 0;
+}
+
+/* Show bean emoji by default in collapsed mode,
+   swap to sidebar icon on hover */
+.sidebar.collapsed .sidebar-toggle .material-symbols-outlined {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-toggle::before {
+    content: '🫘';
+    font-size: 1.4rem;
+    display: block;
+}
+
+.sidebar.collapsed .sidebar-toggle:hover::before {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-toggle:hover .material-symbols-outlined {
+    display: block;
+}
+
+/* Center remaining sidebar items when collapsed */
+.sidebar.collapsed .new-chat-btn {
+    padding: 14px;
+    justify-content: center;
+    margin: 16px 8px 20px 8px;
+}
+
+.sidebar.collapsed .chat-history-item {
+    justify-content: center;
+    padding: 14px 0;
+}
+
+.sidebar.collapsed .chat-icon {
+    margin-right: 0;
+}
+
+.sidebar.collapsed .user-bar {
+    justify-content: center;
+    padding: 16px 0;
+}
+
+.sidebar.collapsed .logo {
+    display: none;
+}
+
+/* Smooth width transition */
+.sidebar {
+    transition: width 0.3s ease;
 }
 
 /*
