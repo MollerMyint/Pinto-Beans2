@@ -26,8 +26,14 @@
 
             <!-- Button to start a new unsaved chat -->
             <button class="new-chat-btn" id="new-chat-btn" data-tooltip="New Chat">
-                <span>New Chat</span>
                 <span class="material-symbols-outlined">chat_add_on</span>
+                <span>New Chat</span>
+            </button>
+
+            <!-- Search button -->
+            <button class="search-btn" id="search-btn" data-tooltip="Search Chats">
+                <span class="material-symbols-outlined">search</span>
+                <span>Search chats</span>
             </button>
 
             <!-- Chat history list — populated dynamically from the database -->
@@ -140,6 +146,20 @@
         </div>
     </div>
 
+    <!-- ======SEARCH MODAL====== -->
+    <div id="search-modal" class="search-modal">
+        <div class="search-modal-content">
+            <div class="search-input-row">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="search-input" placeholder="Search chats..." autocomplete="off">
+                <button id="search-close" class="search-close">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="search-results" id="search-results"></div>
+        </div>
+    </div>
+
     <!-- marked.js: converts AI markdown responses into structured HTML -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 
@@ -178,6 +198,12 @@
     const sidebar = document.querySelector('.sidebar');
     const sidebarToggleBtn = document.getElementById('sidebar-toggle');
 
+    // SEARCH
+    const searchBtn     = document.getElementById('search-btn');
+    const searchModal   = document.getElementById('search-modal');
+    const searchInput   = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    const searchClose   = document.getElementById('search-close');
 
     // Starting questions
     const FALLBACK_QUESTIONS = [
@@ -295,10 +321,76 @@
         sidebarToggleBtn.setAttribute('data-tooltip', 'Close Sidebar');
     }
 
-    // Restore saved state on load
-    if (localStorage.getItem('sidebarCollapsed') === 'true') {
-        sidebar.classList.add('collapsed');
+    // SEARCH — open modal and show all chats
+    searchBtn.addEventListener('click', function() {
+        searchModal.classList.add('show');
+        setTimeout(() => searchInput.focus(), 50);
+        renderSearchResults('');
+    });
+
+    // SEARCH — close modal and reset state
+    function closeSearch() {
+        searchModal.classList.remove('show');
+        searchInput.value = '';
+        searchResults.innerHTML = '';
     }
+
+    searchClose.addEventListener('click', closeSearch);
+
+    searchModal.addEventListener('click', function(e) {
+        if (e.target === searchModal) closeSearch();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeSearch();
+    });
+
+    // SEARCH — filter sidebar chats and render results with highlighted matches
+    function renderSearchResults(query) {
+        const items = document.querySelectorAll('.chat-history-item');
+        const q = query.toLowerCase().trim();
+        let html = '';
+        let count = 0;
+
+        items.forEach(item => {
+            const title  = item.querySelector('.chat-name').textContent;
+            const chatId = item.dataset.chatId;
+
+            if (!q || title.toLowerCase().includes(q)) {
+                const highlighted = q
+                    ? title.replace(new RegExp(`(${q})`, 'gi'), '<mark>$1</mark>')
+                    : title;
+
+                html += `
+                    <div class="search-result-item" data-chat-id="${chatId}">
+                        <span class="material-symbols-outlined">chat</span>
+                        ${highlighted}
+                    </div>`;
+                count++;
+            }
+        });
+
+        if (count === 0) {
+            html = `<div class="search-empty">No chats found</div>`;
+        }
+
+        searchResults.innerHTML = html;
+
+        // Click a result to close the modal and load that chat
+        searchResults.querySelectorAll('.search-result-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const chatId   = parseInt(this.dataset.chatId);
+                const chatName = this.textContent.trim();
+                closeSearch();
+                loadChat(chatId, chatName);
+            });
+        });
+    }
+
+    // SEARCH — live filter as user types
+    searchInput.addEventListener('input', function() {
+        renderSearchResults(this.value);
+    });
 
     // LOAD USER CHATS ON STARTUP
     // Fetches all saved chats from the database
@@ -438,9 +530,19 @@
         optionsBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             const menu = this.nextElementSibling;
+
+            // Close all other open menus
             document.querySelectorAll('.chat-options-menu').forEach(m => {
                 if (m !== menu) m.classList.remove('show');
             });
+
+            if (!menu.classList.contains('show')) {
+                // Position the menu relative to the button on screen
+                const rect = this.getBoundingClientRect();
+                menu.style.top  = `${rect.bottom + 4}px`;
+                menu.style.left = `${rect.left}px`;
+            }
+
             menu.classList.toggle('show');
         });
 
@@ -685,4 +787,4 @@
 
     </script>
 </body>
-</html>X
+</html>
