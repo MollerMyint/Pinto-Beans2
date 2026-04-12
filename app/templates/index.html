@@ -42,20 +42,53 @@
         </div>
 
         <!-- ======MAIN CHAT AREA====== -->
-        <div class="chat-container">
+        <div class="chat-container" id="chat-container">
 
             <!-- Displays the current chat's name -->
-            <div class="chat-header">Current Chat Name</div>
+            <div class="chat-header" id="chat-header">New Chat</div>
 
-            <!-- Scrollable message feed where bot and user messages appear -->
-            <div class="chat-messages" id="chat-messages">
-                <div class="message bot-message">
-                    Welcome to the BillyBean Bot! Type a question to get started.
+            <!-- ======LANDING VIEW====== -->
+            <!-- Shown at the start of every new chat; hidden after first message -->
+            <div class="landing-view" id="landing-view">
+
+                <!-- Greeting text -->
+                <div class="landing-greeting" id="landing-greeting">
+                    <span class="landing-logo">🫘</span>
+                    <h1 id="landing-title">Hello, {{ username }}!</h1>
+                    <p>What can I help you with today?</p>
                 </div>
+
+                <!-- Centered input form (only shown in landing mode) -->
+                <form id="chat-form-landing" class="chat-form landing-form">
+                    <textarea
+                        id="corpus_question_landing"
+                        placeholder="Type your question here..."
+                        rows="1"></textarea>
+                    <button type="submit">
+                        <div class="svg-wrapper-1">
+                            <div class="svg-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="none" d="M0 0h24v24H0z"></path>
+                                <path fill="currentColor" d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"></path>
+                            </svg>
+                            </div>
+                        </div>
+                        <span>Send</span>
+                    </button>
+                </form>
+
+                <!-- Suggestion chips shown below the landing input -->
+                <div class="landing-suggestions" id="landing-suggestions"></div>
             </div>
 
-            <!-- User input form with auto-resizing textarea and animated send button -->
-            <form id="chat-form" class="chat-form">
+            <!-- ======CHAT VIEW====== -->
+            <!-- Hidden during landing mode; shown after first message -->
+
+            <!-- Scrollable message feed where bot and user messages appear -->
+            <div class="chat-messages" id="chat-messages" style="display: none;"></div>
+
+            <!-- User input form (anchored to bottom in chat mode) -->
+            <form id="chat-form" class="chat-form" style="display: none;">
                 <textarea
                     id="corpus_question"
                     name="corpus_question"
@@ -110,42 +143,116 @@
     <script>
 
     // DOM REFERENCES & STATE VARIABLES
-    // Grab key elements and initialize app state
-    const form = document.getElementById("chat-form");
-    const input = document.getElementById("corpus_question");
-    const chatMessages = document.getElementById("chat-messages");
-    const newChatBtn = document.getElementById("new-chat-btn");
-    const chatHistory = document.getElementById("chat-history");
-    const chatHeader = document.querySelector(".chat-header");
-    let currentChatId = null;
+    const form          = document.getElementById("chat-form");
+    const input         = document.getElementById("corpus_question");
+    const chatMessages  = document.getElementById("chat-messages");
+    const newChatBtn    = document.getElementById("new-chat-btn");
+    const chatHistory   = document.getElementById("chat-history");
+    const chatHeader    = document.getElementById("chat-header");
 
-    // Popup element references for rename and delete modals
-    const renamePopup = document.getElementById("rename-popup");
-    const renameInput = document.getElementById("rename-input");
+    // Landing-mode elements
+    const landingView        = document.getElementById("landing-view");
+    const landingForm        = document.getElementById("chat-form-landing");
+    const landingInput       = document.getElementById("corpus_question_landing");
+    const landingSuggestions = document.getElementById("landing-suggestions");
+
+    let currentChatId = null;
+    let isLanding     = true;   // true = landing screen is visible
+
+    // Popup references
+    const renamePopup      = document.getElementById("rename-popup");
+    const renameInput      = document.getElementById("rename-input");
     const confirmRenameBtn = document.getElementById("confirm-rename");
-    const cancelRenameBtn = document.getElementById("cancel-rename");
+    const cancelRenameBtn  = document.getElementById("cancel-rename");
     let chatToRename = null;
-    
-    const deletePopup = document.getElementById("delete-popup");
+
+    const deletePopup      = document.getElementById("delete-popup");
     const confirmDeleteBtn = document.getElementById("confirm-delete");
-    const cancelDeleteBtn = document.getElementById("cancel-delete");
+    const cancelDeleteBtn  = document.getElementById("cancel-delete");
     let chatToDelete = null;
+
+    // Starting questions
+    const FALLBACK_QUESTIONS = [
+        "What clubs and organizations can I join?",
+        "How do I register for classes?",
+        "Where is the financial aid office?",
+        "What dining options are on campus?"
+    ];
 
     // Tracks the last question asked so the regenerate button can re-send it
     let lastQuestion = null;
 
-    // TEXTAREA AUTO-RESIZE
-    // Expands the input box as the user types,
-    // up to the max-height defined in CSS
-    input.addEventListener('input', function () {
+    // LANDING --> CHAT TRANSITIONS
+    // exitLanding — fades out the landing view --> shows the chat UI
+    function exitLanding(firstQuestion) {
+        landingView.classList.add('hiding');
+        setTimeout(() => {
+            landingView.style.display = 'none';
+            landingView.classList.remove('hiding');
+            chatMessages.style.display = 'flex';
+            form.style.display         = 'flex';
+            isLanding = false;
+            // Trigger actual submit with the captured question
+            input.value = firstQuestion;
+            form.dispatchEvent(new Event('submit'));
+        }, 250);
+    }
+
+    // showLanding — resets everything back to the landing screen
+    function showLanding() {
+        isLanding = true;
+        chatMessages.style.display = 'none';
+        form.style.display         = 'none';
+        landingView.style.display  = 'flex';
+        landingView.classList.remove('hiding');
+        landingInput.value       = '';
+        landingInput.style.height = 'auto';
+        chatMessages.innerHTML   = '';
+        showStarterQuestions();
+    }
+
+    // LANDING FORM — submit & keyboard
+    landingForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const question = landingInput.value.trim();
+        if (!question) return;
+        exitLanding(question);
+    });
+
+    landingInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            landingForm.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // Auto-resize the landing textarea as the user types
+    landingInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
 
-    // KEYBOARD SHORTCUT
-    // Enter submits the form, Shift+Enter adds
-    // a new line without submitting
-    input.addEventListener('keydown', function (e) {
+    // STARTER QUESTIONS
+    // Shows starter questions at the beginning of new chat
+    function showStarterQuestions() {
+        landingSuggestions.innerHTML = FALLBACK_QUESTIONS.map(q =>
+            `<button class="suggestion-chip">${q}</button>`
+        ).join('');
+
+        landingSuggestions.querySelectorAll('.suggestion-chip').forEach(btn => {
+            btn.addEventListener('click', function() {
+                exitLanding(this.textContent.trim());
+            });
+        });
+    }
+
+    // CHAT INPUT — auto-resize & keyboard shortcut
+    input.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+    });
+
+    input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             form.dispatchEvent(new Event('submit'));
@@ -158,19 +265,16 @@
     async function loadUserChats() {
         try {
             const response = await fetch(`/user/chats`);
-            const data = await response.json();
-            
+            const data     = await response.json();
+
             chatHistory.innerHTML = '';
-            
             data.chats.forEach(chat => {
                 addChatToSidebar(chat.chat_id, chat.title);
             });
 
-            // Always start on a blank unsaved chat on load
-            currentChatId = null;
-            chatMessages.innerHTML = '';
-            addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+            currentChatId        = null;
             chatHeader.textContent = 'New Chat';
+            showLanding();
 
         } catch (error) {
             console.error('Error loading chats:', error);
@@ -184,7 +288,7 @@
     // appends for loaded history.
     function addChatToSidebar(chatId, title, prepend = false) {
         const chatItem = document.createElement('div');
-        chatItem.className = 'chat-history-item';
+        chatItem.className      = 'chat-history-item';
         chatItem.dataset.chatId = chatId;
         chatItem.innerHTML = `
             <span class="chat-icon material-symbols-outlined">chat</span>
@@ -213,13 +317,11 @@
     // Renders a message bubble for either the
     // user or bot. Bot messages are parsed through
     // marked.js to render markdown (bold, lists,
-    // links) and include copy + regenerate buttons.
+    // links) and include copy + regenerate buttons
     function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
-
-        // Convert markdown syntax to HTML
-        const parsedText = marked.parse(text);
+        const messageDiv      = document.createElement('div');
+        messageDiv.className  = `message ${sender}-message`;
+        const parsedText      = marked.parse(text);
 
         if (sender === 'bot') {
             messageDiv.innerHTML = `
@@ -249,11 +351,9 @@
             // and replaces this message's content with the new response
             messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
                 if (!currentChatId || !lastQuestion) return;
-
                 this.disabled = true;
                 const icon = this.querySelector('.material-symbols-outlined');
                 icon.style.animation = 'spin 1s linear infinite';
-
                 try {
                     const response = await fetch('/ask', {
                         method: 'POST',
@@ -261,14 +361,12 @@
                         body: JSON.stringify({ question: lastQuestion, chat_id: currentChatId })
                     });
                     const data = await response.json();
-                    // Parse the new response through marked.js to preserve formatting
                     messageDiv.querySelector('.message-text').innerHTML = marked.parse(data.answer);
                 } catch (error) {
                     console.error('Regenerate failed:', error);
                 }
-
-                this.disabled = false;
-                icon.style.animation = '';
+                this.disabled          = false;
+                icon.style.animation   = '';
             });
 
         } else {
@@ -286,9 +384,9 @@
     function attachChatItemListeners(chatItem) {
         // Click the row to load that chat
         chatItem.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('chat-options-btn') && 
+            if (!e.target.classList.contains('chat-options-btn') &&
                 !e.target.closest('.chat-options-menu')) {
-                const chatId = parseInt(this.dataset.chatId);
+                const chatId   = parseInt(this.dataset.chatId);
                 const chatName = this.querySelector('.chat-name').textContent;
                 loadChat(chatId, chatName);
             }
@@ -310,8 +408,8 @@
         renameBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             const chatNameSpan = chatItem.querySelector('.chat-name');
-            chatToRename = { element: chatNameSpan, chatId: chatItem.dataset.chatId };
-            renameInput.value = chatNameSpan.textContent;
+            chatToRename       = { element: chatNameSpan, chatId: chatItem.dataset.chatId };
+            renameInput.value  = chatNameSpan.textContent;
             renamePopup.classList.add('show');
             setTimeout(() => renameInput.focus(), 100);
             this.closest('.chat-options-menu').classList.remove('show');
@@ -322,7 +420,7 @@
         deleteBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             const chatName = chatItem.querySelector('.chat-name').textContent;
-            chatToDelete = { element: chatItem, chatId: chatItem.dataset.chatId };
+            chatToDelete   = { element: chatItem, chatId: chatItem.dataset.chatId };
             document.querySelector('.chat-to-delete').textContent = `"${chatName}"`;
             deletePopup.classList.add('show');
             this.closest('.chat-options-menu').classList.remove('show');
@@ -333,25 +431,30 @@
     // Fetches and renders all messages for a
     // selected chat, highlighting it as active
     async function loadChat(chatId, chatName) {
-        currentChatId = chatId;
+        // If currently on the landing screen, exit it without a question
+        if (isLanding) {
+            landingView.style.display  = 'none';
+            chatMessages.style.display = 'flex';
+            form.style.display         = 'flex';
+            isLanding = false;
+        }
+
+        currentChatId          = chatId;
         chatHeader.textContent = chatName;
-        
-        document.querySelectorAll('.chat-history-item').forEach(item => {
-            item.classList.remove('active');
-        });
+
+        document.querySelectorAll('.chat-history-item').forEach(item => item.classList.remove('active'));
         document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add('active');
-        
+
         try {
             const response = await fetch(`/chats/${chatId}/messages`);
-            const data = await response.json();
-            
+            const data     = await response.json();
+
             chatMessages.innerHTML = '';
-            
             data.messages.forEach(msg => {
                 addMessage(msg.question, 'user');
                 addMessage(msg.answer, 'bot');
             });
-            
+
             if (data.messages.length === 0) {
                 addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
             }
@@ -364,16 +467,13 @@
     // Resets the chat area to a blank state
     // without saving, if not already on a new chat
     newChatBtn.addEventListener('click', function() {
-        if (currentChatId === null) return;
+        // If already on a fresh landing screen, do nothing
+        if (isLanding && currentChatId === null) return;
 
-        currentChatId = null;
-        chatMessages.innerHTML = '';
-        addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+        currentChatId          = null;
         chatHeader.textContent = 'New Chat';
-
-        document.querySelectorAll('.chat-history-item').forEach(item => {
-            item.classList.remove('active');
-        });
+        document.querySelectorAll('.chat-history-item').forEach(i => i.classList.remove('active'));
+        showLanding();
     });
 
     // FORM SUBMIT — SEND A MESSAGE
@@ -386,19 +486,16 @@
         const question = input.value.trim();
         if (!question) return;
 
-        // Save for use by the regenerate button
-        lastQuestion = question; 
-
+        lastQuestion = question;
         addMessage(question, 'user');
 
-        // Reset textarea height after submit
-        input.value = '';
+        input.value       = '';
         input.style.height = 'auto';
 
         // Show the animated thinking loader while waiting for a response
-        const loadingMessage = document.createElement('div');
-        loadingMessage.className = 'message bot-message';
-        loadingMessage.innerHTML = `
+        const loadingMessage      = document.createElement('div');
+        loadingMessage.className  = 'message bot-message';
+        loadingMessage.innerHTML  = `
         <div class="loader-wrapper">
             <div class="loader"></div>
             <div class="letter-wrapper">
@@ -417,7 +514,7 @@
 
         try {
             if (!currentChatId) {
-                // First message: create a new chat and get an AI-generated title
+                // First message: create new chat with AI-generated title
                 const response = await fetch('/new/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -425,7 +522,7 @@
                 });
                 const data = await response.json();
 
-                currentChatId = data.chat_id;
+                currentChatId          = data.chat_id;
                 chatHeader.textContent = data.title;
                 addChatToSidebar(data.chat_id, data.title, true);
                 document.querySelector(`[data-chat-id="${data.chat_id}"]`)?.classList.add('active');
@@ -434,7 +531,7 @@
                 addMessage(data.answer, 'bot');
 
             } else {
-                // Subsequent messages: append to the existing chat
+                // Subsequent messages
                 const response = await fetch('/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -462,23 +559,20 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title: newTitle })
                 });
-
                 chatToRename.element.textContent = newTitle;
-                if (currentChatId == chatToRename.chatId) {
-                    chatHeader.textContent = newTitle;
-                }
+                if (currentChatId == chatToRename.chatId) chatHeader.textContent = newTitle;
             } catch (err) {
                 console.error('Rename failed:', err);
             }
         }
-        chatToRename = null;
-        renameInput.value = '';
+        chatToRename       = null;
+        renameInput.value  = '';
         renamePopup.classList.remove('show');
     });
 
     cancelRenameBtn.addEventListener('click', function() {
-        chatToRename = null;
-        renameInput.value = '';
+        chatToRename       = null;
+        renameInput.value  = '';
         renamePopup.classList.remove('show');
     });
 
@@ -493,14 +587,11 @@
             } catch (err) {
                 console.error('Delete failed:', err);
             }
-
             chatToDelete.element.remove();
-
             if (currentChatId == chatToDelete.chatId) {
-                currentChatId = null;
-                chatMessages.innerHTML = '';
-                addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
+                currentChatId          = null;
                 chatHeader.textContent = 'New Chat';
+                showLanding();
             }
         }
         chatToDelete = null;
@@ -516,8 +607,8 @@
     // Clicking outside the popup card dismisses it
     renamePopup.addEventListener('click', function(e) {
         if (e.target === renamePopup) {
-            chatToRename = null;
-            renameInput.value = '';
+            chatToRename       = null;
+            renameInput.value  = '';
             renamePopup.classList.remove('show');
         }
     });
@@ -534,17 +625,13 @@
     // anywhere else on the page
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.chat-options-btn') && !e.target.closest('.chat-options-menu')) {
-            document.querySelectorAll('.chat-options-menu').forEach(menu => {
-                menu.classList.remove('show');
-            });
+            document.querySelectorAll('.chat-options-menu').forEach(menu => menu.classList.remove('show'));
         }
     });
 
-    // Submit rename popup on Enter key press
+    // Submit rename on Enter key
     renameInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            confirmRenameBtn.click();
-        }
+        if (e.key === 'Enter') confirmRenameBtn.click();
     });
 
     // Logout button
@@ -554,6 +641,7 @@
 
     // Initialize the app by loading the user's chat history
     loadUserChats();
-</script>
+
+    </script>
 </body>
 </html>
