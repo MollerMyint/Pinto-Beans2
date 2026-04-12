@@ -4,6 +4,16 @@
         <title>Sign Up - BillyBeans Bot</title>
         <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+        <!-- CPP banner at login -->
+        <style>
+            body {
+                background: 
+                    linear-gradient(rgba(0, 80, 48, 0.50), rgba(0, 80, 48, 0.50)),
+                    url("{{ url_for('static', filename='CPP.png') }}") center/cover no-repeat fixed !important;
+            }
+        </style>
+
     </head>
     <body>
         <div class="auth-container">

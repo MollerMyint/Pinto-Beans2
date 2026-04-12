@@ -4,6 +4,15 @@
         <title>Login - BillyBeans Bot</title>
         <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+        <!-- CPP banner at login -->
+        <style>
+            body {
+                background: 
+                    linear-gradient(rgba(0, 80, 48, 0.50), rgba(0, 80, 48, 0.50)),
+                    url("{{ url_for('static', filename='CPP.png') }}") center/cover no-repeat fixed !important;
+            }
+        </style>
     </head>
     <body>
         <div class="auth-container">
@@ -11,7 +20,7 @@
                 <span class="auth-logo">🫘</span>
                 <h2>Welcome to the BillyBeans Bot!</h2>
             </div>
-            <h4>Please Log In</h4>
+            <h4>Login or create an account!</h4>
             <form method="POST" action="/login">
                 <input type="text" name="username" placeholder="Username">
                 <input type="password" name="password" placeholder="Password">

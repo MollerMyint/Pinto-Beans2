@@ -16,7 +16,6 @@ body {
     align-items: center;
 }
 
-
 /* Header row — bean emoji + title side by side */
 .auth-header {
     display: flex;
