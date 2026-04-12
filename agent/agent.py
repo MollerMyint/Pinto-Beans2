@@ -17,7 +17,7 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage
 from flask import Flask, request, render_template
 from functools import lru_cache
-# from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 import warnings
 
 load_dotenv() # load environment variables from .env file
