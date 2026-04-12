@@ -292,7 +292,6 @@ body {
     width: 100%;
     max-width: 560px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
     border: 1.5px solid #A5D55C;
 }
 
@@ -1024,7 +1023,7 @@ body {
 
 /* Spin animation used by the regenerate button while loading */
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to { transform: rotate(-360deg); }
 }
 
 /*
