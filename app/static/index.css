@@ -174,8 +174,7 @@ body {
 .sidebar.collapsed .search-btn span:last-child,
 .sidebar.collapsed .chat-name,
 .sidebar.collapsed .chat-options-btn,
-.sidebar.collapsed .user-greeting,
-.sidebar.collapsed .logout-btn {
+.sidebar.collapsed .user-greeting {
     display: none;
 }
 
@@ -224,9 +223,14 @@ body {
     display: none;
 }
 
+.sidebar.collapsed .chat-history {
+    border-top: none;
+    padding-top: 0;
+}
+
 /* Show a single centered search icon in the chat history area when collapsed */
 .sidebar.collapsed .chat-history::before {
-    content: 'chat';
+    content: 'chat'; /* restores the icon override you already have */
     font-family: 'Material Symbols Outlined';
     font-size: 20px;
     font-variation-settings: 'wght' 300;
@@ -235,6 +239,8 @@ body {
     justify-content: center;
     padding: 14px 0;
     cursor: pointer;
+    letter-spacing: normal;
+    font-weight: normal;
 }
 
 .sidebar.collapsed .chat-history:hover::before {
@@ -458,6 +464,20 @@ body {
     flex-direction: column;
     gap: 0px;
     padding: 0 12px;
+    border-top: 1px solid rgba(165, 213, 92, 0.25); /* faint green divider */
+    padding-top: 8px;
+    margin-top: 4px;
+}
+
+.chat-history::before {
+    content: 'Recents';
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 6px 4px 8px 4px;
+    letter-spacing: 0.01em;
+    flex-shrink: 0;
 }
 
 /* Individual chat history row */
@@ -702,6 +722,7 @@ body {
    Displays the mascot image and greeting
    at the bottom of the sidebar
 */
+/* USER BAR as button */
 .user-bar {
     display: flex;
     align-items: center;
@@ -709,6 +730,112 @@ body {
     padding: 16px 20px;
     border-top: 1px solid #A5D55C;
     margin-top: auto;
+    background: transparent;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.2s ease;
+    color: #ffffff;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+
+.user-bar:hover {
+    background: rgba(255, 184, 29, 0.1);
+}
+
+.user-bar-chevron {
+    font-size: 18px;
+    margin-left: auto;
+    opacity: 0.6;
+    font-variation-settings: 'wght' 300;
+    transition: transform 0.2s ease;
+}
+
+.user-bar.open .user-bar-chevron {
+    transform: rotate(180deg);
+}
+
+/* Account popup */
+.account-popup {
+    display: none;
+    flex-direction: column;
+    background: #F0F0F0;
+    border: 2px solid #A5D55C;
+    border-radius: 12px;
+    padding: 6px;
+    margin: 0 10px 8px 10px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.account-popup.show {
+    display: flex;
+}
+
+.account-popup-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: #004428;
+    font-size: 15px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s ease;
+    text-align: left;
+}
+
+.account-popup-item:hover {
+    background: rgba(184, 217, 135, 0.506);
+}
+
+.account-popup-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: #004428;
+}
+
+.account-popup-icon-mat {
+    font-size: 18px;
+    font-variation-settings: 'wght' 300;
+    flex-shrink: 0;
+    width: 18px;      
+    text-align: center;
+}
+
+.account-popup-logout {
+    color: #B52C4C;
+}
+
+.account-popup-logout:hover {
+    background: rgba(181, 44, 76, 0.15) !important;
+}
+
+/* Hide chevron when sidebar is collapsed */
+.sidebar.collapsed .user-bar-chevron {
+    display: none;
+}
+
+.sidebar.collapsed .account-popup {
+    display: none;
+    position: fixed;
+    left: 72px;
+    bottom: 16px;
+    margin: 0;
+    z-index: 2000;
+    min-width: 160px;
+}
+
+.sidebar.collapsed .account-popup.show {
+    display: flex;
 }
 
 .user-avatar {
@@ -724,30 +851,6 @@ body {
     font-size: 15px;
     font-weight: 500;
     color: #ffffff;
-}
-
-/* Logout button */
-.logout-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 6px;
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-    transition: all 0.2s ease;
-}
-
-.logout-btn:hover {
-    background: rgba(255, 184, 29, 0.2);
-    color: #FFB81D;
-}
-
-.logout-btn .material-symbols-outlined {
-    font-size: 22px;
-    font-variation-settings: 'wght' 300;
 }
 
 /*
