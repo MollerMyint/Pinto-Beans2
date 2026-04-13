@@ -17,7 +17,8 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage
 from flask import Flask, request, render_template
 from functools import lru_cache
-from sentence_transformers import SentenceTransformer
+#temp deletion
+#from sentence_transformers import SentenceTransformer
 import warnings
 
 load_dotenv() # load environment variables from .env file
@@ -224,8 +225,8 @@ def _semantic_use_full_embedding_index(cur: sqlite3.Cursor, query: str, candidat
     return best > FTS_BM25_WEAK_IF_ABOVE
 
 
-@lru_cache(maxsize=1)
-def get_sbert_model() -> SentenceTransformer:
+#@lru_cache(maxsize=1)
+#def get_sbert_model() -> SentenceTransformer:
     """One shared model instance; first load is slow, later calls are cheap."""
     model = SentenceTransformer("all-MiniLM-L6-v2")
     model.max_seq_length = 512
@@ -237,12 +238,12 @@ def get_conn():
     return sqlite3.connect(DB_PATH)
 
 
-@lru_cache(maxsize=1)
-def load_sbert_index() -> tuple[
+#@lru_cache(maxsize=1)
+#def load_sbert_index() -> tuple[
     list[tuple[str, str, str, str, str]],
     Optional[np.ndarray],
     dict[int, int],
-]:
+#]:
     """In-memory doc list + embedding matrix; chunk_id_to_index maps SQL chunk id to matrix row."""
     conn = get_conn()
     cur = conn.cursor()
@@ -407,8 +408,8 @@ def search_corpus(query: str) -> str:
     conn.close()
     return format_results(rows)
 
-@tool
-def semantic_search_sbert(query: str) -> str:
+#@tool
+#def semantic_search_sbert(query: str) -> str:
     """
     Perform semantic search on the CPP markdown corpus with SBERT's all-MiniLM-L6-v2 model.
     Hybrid SBERT + lexical rerank over FTS candidates when lexical recall looks strong; otherwise scores all embedded chunks (higher recall, slower).
@@ -515,7 +516,9 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
 
     # search_corpus: FTS keyword hits; semantic_search_sbert: meaning + hybrid rerank
     # create_chat_title enabled only for first-turn chat naming
-    tools = [search_corpus, semantic_search_sbert]
+    # TEMP: disable SBERT on Render to reduce memory usage
+    tools = [search_corpus]
+    # tools = [search_corpus, semantic_search_sbert]
     if include_title_tool:
         tools.append(create_chat_title)
 
@@ -531,6 +534,15 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
         title_tool_line = "\n        - create_chat_title"
 
     # Expanded from short corpus-only prompt: grounding, structured-data rules, confidence %, optional create_chat_title flow
+    #You may use these tools:
+        #- search_corpus
+        #- semantic_search_sbert{title_tool_line}
+    """Tool tactics (effective and efficient use):
+        - Retrieve before stating facts. Prefer one strong search when results clearly match the question; call again only if results are empty, off-topic, or clearly incomplete—never repeat the exact same query string.
+        - search_corpus (lexical / keyword): Best for exact or literal wording likely on the site—office or department names, form or program names, course codes, policy or fee keywords, building names, acronyms (e.g. FAFSA, GE). Remove filler and question framing; pass a short string of distinctive tokens (often roughly three to eight words). Very long queries behave like requiring many terms at once and often return nothing—shorten and retry with different core terms rather than re-sending the full paragraph.
+        - semantic_search_sbert (meaning plus hybrid ranking): Best for paraphrases, “how does … work,” conceptual questions, or when you do not know the precise campus terminology. Pass clear natural language; add concrete CPP-specific nouns from the user message or chat history when possible. If results are weak, reformulate (synonyms, broader or narrower topic, named entity from history) or follow with search_corpus using new keywords—not a duplicate of the failed string.
+        - Use chat history to expand vague follow-ups into search queries: replace “that,” “it,” or “the deadline” with the specific program, office, or topic from prior turns before calling a tool.
+        - When choosing a tool: for broad or exploratory questions start with semantic_search_sbert; for lookup-style questions with known labels or codes start with search_corpus. Use both in one turn only when one call clearly failed or when the question needs both conceptual coverage and exact terminology and the first pass was insufficient."""
     system_prompt = f"""
         You are Cal Poly Pomona's AI campus knowledge assistant.
 
@@ -541,14 +553,13 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
 
         You may use these tools:
         - search_corpus
-        - semantic_search_sbert{title_tool_line}
 
         Tool tactics (effective and efficient use):
         - Retrieve before stating facts. Prefer one strong search when results clearly match the question; call again only if results are empty, off-topic, or clearly incomplete—never repeat the exact same query string.
         - search_corpus (lexical / keyword): Best for exact or literal wording likely on the site—office or department names, form or program names, course codes, policy or fee keywords, building names, acronyms (e.g. FAFSA, GE). Remove filler and question framing; pass a short string of distinctive tokens (often roughly three to eight words). Very long queries behave like requiring many terms at once and often return nothing—shorten and retry with different core terms rather than re-sending the full paragraph.
-        - semantic_search_sbert (meaning plus hybrid ranking): Best for paraphrases, “how does … work,” conceptual questions, or when you do not know the precise campus terminology. Pass clear natural language; add concrete CPP-specific nouns from the user message or chat history when possible. If results are weak, reformulate (synonyms, broader or narrower topic, named entity from history) or follow with search_corpus using new keywords—not a duplicate of the failed string.
+       
         - Use chat history to expand vague follow-ups into search queries: replace “that,” “it,” or “the deadline” with the specific program, office, or topic from prior turns before calling a tool.
-        - When choosing a tool: for broad or exploratory questions start with semantic_search_sbert; for lookup-style questions with known labels or codes start with search_corpus. Use both in one turn only when one call clearly failed or when the question needs both conceptual coverage and exact terminology and the first pass was insufficient.
+       
 
         Core behavior:
         - Use chat history when it is available to understand the user's current question in context.
