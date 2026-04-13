@@ -17,7 +17,8 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage
 from flask import Flask, request, render_template
 from functools import lru_cache
-from sentence_transformers import SentenceTransformer
+# temp deletion
+# from sentence_transformers import SentenceTransformer
 import warnings
 
 load_dotenv()  # load environment variables from .env file
@@ -34,10 +35,6 @@ DB_PATH = BASE_DIR / "campus_kb.db"  # SQLite: chunks, documents, FTS, sbert_emb
 CORPUS_DIR = BASE_DIR / "itc2026_ai_corpus"  # optional raw .md mirror of scraped pages (reserved for future use)
 SEMANTIC_CANDIDATE_LIMIT = 300  # max chunk IDs passed from FTS into SBERT reranking
 RETRIEVAL_TOP_K = 15  # chunks returned to the model per search_* tool call (recall vs context size)
-SEMANTIC_MAX_CANDIDATES = int(os.getenv("SEMANTIC_MAX_CANDIDATES", "220"))
-SEMANTIC_CANDIDATE_EXPANSION_FACTOR = int(os.getenv("SEMANTIC_CANDIDATE_EXPANSION_FACTOR", "3"))
-SEMANTIC_ALLOW_FULL_INDEX = os.getenv("SEMANTIC_ALLOW_FULL_INDEX", "0").strip().lower() in {"1", "true", "yes", "on"}
-SEMANTIC_ENABLE_SBERT = os.getenv("SEMANTIC_ENABLE_SBERT", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 # When lexical recall looks weak, run SBERT cosine over every embedded chunk instead of FTS candidates only
 FTS_SHORTLIST_MIN_COUNT = 40  # fewer unique FTS candidates than this → full dense index
@@ -227,9 +224,8 @@ def _semantic_use_full_embedding_index(cur: sqlite3.Cursor, query: str, candidat
     # bm25 is better when more negative in FTS5; scores above threshold considered weak
     return best > FTS_BM25_WEAK_IF_ABOVE
 
-
-@lru_cache(maxsize=1)
-def get_sbert_model() -> SentenceTransformer:
+    # @lru_cache(maxsize=1)
+    # def get_sbert_model() -> SentenceTransformer:
     """One shared model instance; first load is slow, later calls are cheap."""
     model = SentenceTransformer("all-MiniLM-L6-v2")
     model.max_seq_length = 512
@@ -240,87 +236,12 @@ def get_conn():
     """Short-lived connections per operation (simple and safe for Flask + CLI)."""
     return sqlite3.connect(DB_PATH)
 
-
-def _parse_sbert_embedding(embedding_json: str) -> Optional[np.ndarray]:
-    """Parse one JSON embedding into a normalized float32 vector."""
-    try:
-        vec = np.array(json.loads(embedding_json), dtype=np.float32)
-    except (TypeError, ValueError, json.JSONDecodeError):
-        return None
-
-    if vec.ndim != 1 or vec.size == 0:
-        return None
-    return vec
-
-
-def _load_sbert_rows_for_chunk_ids(chunk_ids: list[int]) -> tuple[
-    list[tuple[str, str, str, str, str]],
-    Optional[np.ndarray],
-]:
-    """
-    Memory-safe SBERT load path: pull only selected chunk IDs from SQLite.
-    This avoids loading the full embedding table for constrained deployments.
-    """
-    if not chunk_ids:
-        return [], None
-
-    conn = get_conn()
-    cur = conn.cursor()
-    docs_by_chunk_id: dict[int, tuple[str, str, str, str, str]] = {}
-    vectors_by_chunk_id: dict[int, np.ndarray] = {}
-
-    # Keep SQLite variable count safe by batching large IN() lists.
-    batch_size = 900
-    for i in range(0, len(chunk_ids), batch_size):
-        batch = chunk_ids[i:i + batch_size]
-        placeholders = ",".join("?" for _ in batch)
-        sql = f"""
-            SELECT
-                c.id,
-                d.file_name,
-                d.title,
-                d.source_url,
-                c.heading,
-                c.chunk_text,
-                e.embedding
-            FROM sbert_embeddings e
-            JOIN chunks c ON c.id = e.chunk_id
-            JOIN documents d ON d.id = c.document_id
-            WHERE c.id IN ({placeholders})
-        """
-        cur.execute(sql, tuple(batch))
-        rows = cur.fetchall()
-
-        for chunk_id, file_name, title, source_url, heading, chunk_text, embedding_json in rows:
-            vec = _parse_sbert_embedding(embedding_json)
-            if vec is None:
-                continue
-            docs_by_chunk_id[int(chunk_id)] = (file_name, title, source_url, heading, chunk_text)
-            vectors_by_chunk_id[int(chunk_id)] = vec
-
-    conn.close()
-
-    docs: list[tuple[str, str, str, str, str]] = []
-    vectors: list[np.ndarray] = []
-    for cid in chunk_ids:
-        if cid not in docs_by_chunk_id or cid not in vectors_by_chunk_id:
-            continue
-        docs.append(docs_by_chunk_id[cid])
-        vectors.append(vectors_by_chunk_id[cid])
-
-    if not vectors:
-        return [], None
-
-    matrix = np.vstack(vectors).astype(np.float32, copy=False)
-    return docs, matrix
-
-
-@lru_cache(maxsize=1)
-def load_sbert_index() -> tuple[
+    # @lru_cache(maxsize=1)
+    # def load_sbert_index() -> tuple[
     list[tuple[str, str, str, str, str]],
     Optional[np.ndarray],
     dict[int, int],
-]:
+    # ]:
     """In-memory doc list + embedding matrix; chunk_id_to_index maps SQL chunk id to matrix row."""
     conn = get_conn()
     cur = conn.cursor()
@@ -347,8 +268,12 @@ def load_sbert_index() -> tuple[
     vectors: list[np.ndarray] = []
     chunk_id_to_index: dict[int, int] = {}
     for chunk_id, file_name, title, source_url, heading, chunk_text, embedding_json in rows:
-        vec = _parse_sbert_embedding(embedding_json)
-        if vec is None:
+        try:
+            vec = np.array(json.loads(embedding_json), dtype=np.float32)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+
+        if vec.ndim != 1 or vec.size == 0:
             continue
 
         docs.append((file_name, title, source_url, heading, chunk_text))
@@ -482,9 +407,8 @@ def search_corpus(query: str) -> str:
     conn.close()
     return format_results(rows)
 
-
-@tool
-def semantic_search_sbert(query: str) -> str:
+    # @tool
+    # def semantic_search_sbert(query: str) -> str:
     """
     Perform semantic search on the CPP markdown corpus with SBERT's all-MiniLM-L6-v2 model.
     Hybrid SBERT + lexical rerank over FTS candidates when lexical recall looks strong; otherwise scores all embedded chunks (higher recall, slower).
@@ -495,10 +419,6 @@ def semantic_search_sbert(query: str) -> str:
 
     if not DB_PATH.exists():
         return "Database not found. Run build_index.py first."
-
-    if not SEMANTIC_ENABLE_SBERT:
-        # Keep semantic tool callable while offering a safe deployment fallback.
-        return search_corpus.invoke({"query": q})
 
     tokens = _stopping_tokens(q)
     if not tokens:
@@ -511,31 +431,10 @@ def semantic_search_sbert(query: str) -> str:
     use_full_index = _semantic_use_full_embedding_index(cur, q, candidate_ids)
     conn.close()
 
-    # Cap candidate set for memory safety; optionally expand if lexical shortlist was weak.
-    max_candidates = max(1, min(SEMANTIC_MAX_CANDIDATES, 2000))
-    expanded_limit = min(
-        max_candidates,
-        max(SEMANTIC_CANDIDATE_LIMIT, SEMANTIC_CANDIDATE_LIMIT * max(1, SEMANTIC_CANDIDATE_EXPANSION_FACTOR)),
-    )
-    if (use_full_index or len(candidate_ids) < FTS_SHORTLIST_MIN_COUNT) and len(candidate_ids) < expanded_limit:
-        conn = get_conn()
-        cur = conn.cursor()
-        candidate_ids = _collect_fts_candidate_ids(cur, q, limit=expanded_limit)
-        conn.close()
-
-    candidate_ids = candidate_ids[:max_candidates]
-    if not candidate_ids:
-        return "No relevant matches found in the corpus."
-
-    docs: list[tuple[str, str, str, str, str]]
-    matrix: Optional[np.ndarray]
-    if use_full_index and SEMANTIC_ALLOW_FULL_INDEX:
-        try:
-            docs, matrix, _ = load_sbert_index()
-        except sqlite3.OperationalError:
-            return "Embeddings not found. Run sbert_vectors.py first."
-    else:
-        docs, matrix = _load_sbert_rows_for_chunk_ids(candidate_ids)
+    try:
+        docs, matrix, chunk_id_to_index = load_sbert_index()
+    except sqlite3.OperationalError:
+        return "Embeddings not found. Run sbert_vectors.py first."
 
     embeddings = get_sbert_model()
     # full original query string preserves phrasing for embedding model, not just token list
@@ -547,15 +446,24 @@ def semantic_search_sbert(query: str) -> str:
     if matrix.shape[1] != query_vector.shape[0]:
         return "No relevant matches found in the corpus."
 
-    candidate_matrix = matrix
+    if use_full_index:
+        # full-index path prioritizes recall when lexical evidence sparse/weak
+        candidate_indices = list(range(matrix.shape[0]))
+    else:
+        candidate_indices = [chunk_id_to_index[cid] for cid in candidate_ids if cid in chunk_id_to_index]
+        if not candidate_indices or len(candidate_indices) < FTS_SHORTLIST_MIN_COUNT:
+            # mapped shortlist can still shrink after ID->matrix alignment
+            candidate_indices = list(range(matrix.shape[0]))
+
+    candidate_matrix = matrix[candidate_indices]
 
     # Vectors are normalized so dot product gives cosine similarity
     similarities = candidate_matrix @ query_vector
     lexical_scores = np.zeros(similarities.shape[0], dtype=np.float32)
     token_set = set(tokens)
     # score each chunk based on keyword overlap and metadata
-    for i, doc in enumerate(docs):
-        file_name, title, _, heading, chunk_text = doc
+    for i, doc_idx in enumerate(candidate_indices):
+        file_name, title, _, heading, chunk_text = docs[doc_idx]
         doc_text = " ".join([
             (file_name or "").lower(),
             (title or "").lower(),
@@ -579,7 +487,7 @@ def semantic_search_sbert(query: str) -> str:
     # Partial sort: select top_k then sort only those indices
     top_idx = np.argpartition(hybrid_scores, -top_k)[-top_k:]
     top_idx = top_idx[np.argsort(hybrid_scores[top_idx])[::-1]]
-    top_rows = [docs[i] for i in top_idx]
+    top_rows = [docs[candidate_indices[i]] for i in top_idx]
     return format_results(top_rows)
 
 
@@ -609,7 +517,9 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
 
     # search_corpus: FTS keyword hits; semantic_search_sbert: meaning + hybrid rerank
     # create_chat_title enabled only for first-turn chat naming
-    tools = [search_corpus, semantic_search_sbert]
+    # TEMP: disable SBERT on Render to reduce memory usage
+    tools = [search_corpus]
+    # tools = [search_corpus, semantic_search_sbert]
     if include_title_tool:
         tools.append(create_chat_title)
 
@@ -625,6 +535,15 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
         title_tool_line = "\n        - create_chat_title"
 
     # Expanded from short corpus-only prompt: grounding, structured-data rules, confidence %, optional create_chat_title flow
+    # You may use these tools:
+    # - search_corpus
+    # - semantic_search_sbert{title_tool_line}
+    """Tool tactics (effective and efficient use):
+        - Retrieve before stating facts. Prefer one strong search when results clearly match the question; call again only if results are empty, off-topic, or clearly incomplete—never repeat the exact same query string.
+        - search_corpus (lexical / keyword): Best for exact or literal wording likely on the site—office or department names, form or program names, course codes, policy or fee keywords, building names, acronyms (e.g. FAFSA, GE). Remove filler and question framing; pass a short string of distinctive tokens (often roughly three to eight words). Very long queries behave like requiring many terms at once and often return nothing—shorten and retry with different core terms rather than re-sending the full paragraph.
+        - semantic_search_sbert (meaning plus hybrid ranking): Best for paraphrases, “how does … work,” conceptual questions, or when you do not know the precise campus terminology. Pass clear natural language; add concrete CPP-specific nouns from the user message or chat history when possible. If results are weak, reformulate (synonyms, broader or narrower topic, named entity from history) or follow with search_corpus using new keywords—not a duplicate of the failed string.
+        - Use chat history to expand vague follow-ups into search queries: replace “that,” “it,” or “the deadline” with the specific program, office, or topic from prior turns before calling a tool.
+        - When choosing a tool: for broad or exploratory questions start with semantic_search_sbert; for lookup-style questions with known labels or codes start with search_corpus. Use both in one turn only when one call clearly failed or when the question needs both conceptual coverage and exact terminology and the first pass was insufficient."""
     system_prompt = f"""
         You are Cal Poly Pomona's AI campus knowledge assistant.
 
@@ -635,14 +554,13 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
 
         You may use these tools:
         - search_corpus
-        - semantic_search_sbert{title_tool_line}
 
         Tool tactics (effective and efficient use):
         - Retrieve before stating facts. Prefer one strong search when results clearly match the question; call again only if results are empty, off-topic, or clearly incomplete—never repeat the exact same query string.
         - search_corpus (lexical / keyword): Best for exact or literal wording likely on the site—office or department names, form or program names, course codes, policy or fee keywords, building names, acronyms (e.g. FAFSA, GE). Remove filler and question framing; pass a short string of distinctive tokens (often roughly three to eight words). Very long queries behave like requiring many terms at once and often return nothing—shorten and retry with different core terms rather than re-sending the full paragraph.
-        - semantic_search_sbert (meaning plus hybrid ranking): Best for paraphrases, “how does … work,” conceptual questions, or when you do not know the precise campus terminology. Pass clear natural language; add concrete CPP-specific nouns from the user message or chat history when possible. If results are weak, reformulate (synonyms, broader or narrower topic, named entity from history) or follow with search_corpus using new keywords—not a duplicate of the failed string.
+
         - Use chat history to expand vague follow-ups into search queries: replace “that,” “it,” or “the deadline” with the specific program, office, or topic from prior turns before calling a tool.
-        - When choosing a tool: for broad or exploratory questions start with semantic_search_sbert; for lookup-style questions with known labels or codes start with search_corpus. Use both in one turn only when one call clearly failed or when the question needs both conceptual coverage and exact terminology and the first pass was insufficient.
+
 
         Core behavior:
         - Use chat history when it is available to understand the user's current question in context.
