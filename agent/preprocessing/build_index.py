@@ -17,12 +17,16 @@ import json
 import sqlite3
 import argparse
 from pathlib import Path
+from dotenv import load_dotenv
+import os
  
+# Load the dotenv file
+load_dotenv()
  
 # Config defaults
 DEFAULT_CORPUS_DIR = "."          # directory that contains the .md files
 DEFAULT_INDEX_JSON = "index.json" # URL -> filename map
-DEFAULT_DB_PATH    = "campus_kb.db"
+DEFAULT_DB_PATH    = os.getenv("DB_URL")# "campus_kb.db"
 MAX_CHUNK_CHARS    = 800          # soft cap before splitting on blank line
  
 # Markdown helpers
