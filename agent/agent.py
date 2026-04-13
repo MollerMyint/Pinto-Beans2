@@ -34,6 +34,10 @@ DB_PATH = BASE_DIR / "campus_kb.db"  # SQLite: chunks, documents, FTS, sbert_emb
 CORPUS_DIR = BASE_DIR / "itc2026_ai_corpus"  # optional raw .md mirror of scraped pages (reserved for future use)
 SEMANTIC_CANDIDATE_LIMIT = 300  # max chunk IDs passed from FTS into SBERT reranking
 RETRIEVAL_TOP_K = 15  # chunks returned to the model per search_* tool call (recall vs context size)
+SEMANTIC_MAX_CANDIDATES = int(os.getenv("SEMANTIC_MAX_CANDIDATES", "220"))
+SEMANTIC_CANDIDATE_EXPANSION_FACTOR = int(os.getenv("SEMANTIC_CANDIDATE_EXPANSION_FACTOR", "3"))
+SEMANTIC_ALLOW_FULL_INDEX = os.getenv("SEMANTIC_ALLOW_FULL_INDEX", "0").strip().lower() in {"1", "true", "yes", "on"}
+SEMANTIC_ENABLE_SBERT = os.getenv("SEMANTIC_ENABLE_SBERT", "1").strip().lower() in {"1", "true", "yes", "on"}
 
 # When lexical recall looks weak, run SBERT cosine over every embedded chunk instead of FTS candidates only
 FTS_SHORTLIST_MIN_COUNT = 40  # fewer unique FTS candidates than this → full dense index
@@ -237,6 +241,80 @@ def get_conn():
     return sqlite3.connect(DB_PATH)
 
 
+def _parse_sbert_embedding(embedding_json: str) -> Optional[np.ndarray]:
+    """Parse one JSON embedding into a normalized float32 vector."""
+    try:
+        vec = np.array(json.loads(embedding_json), dtype=np.float32)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+    if vec.ndim != 1 or vec.size == 0:
+        return None
+    return vec
+
+
+def _load_sbert_rows_for_chunk_ids(chunk_ids: list[int]) -> tuple[
+    list[tuple[str, str, str, str, str]],
+    Optional[np.ndarray],
+]:
+    """
+    Memory-safe SBERT load path: pull only selected chunk IDs from SQLite.
+    This avoids loading the full embedding table for constrained deployments.
+    """
+    if not chunk_ids:
+        return [], None
+
+    conn = get_conn()
+    cur = conn.cursor()
+    docs_by_chunk_id: dict[int, tuple[str, str, str, str, str]] = {}
+    vectors_by_chunk_id: dict[int, np.ndarray] = {}
+
+    # Keep SQLite variable count safe by batching large IN() lists.
+    batch_size = 900
+    for i in range(0, len(chunk_ids), batch_size):
+        batch = chunk_ids[i:i + batch_size]
+        placeholders = ",".join("?" for _ in batch)
+        sql = f"""
+            SELECT
+                c.id,
+                d.file_name,
+                d.title,
+                d.source_url,
+                c.heading,
+                c.chunk_text,
+                e.embedding
+            FROM sbert_embeddings e
+            JOIN chunks c ON c.id = e.chunk_id
+            JOIN documents d ON d.id = c.document_id
+            WHERE c.id IN ({placeholders})
+        """
+        cur.execute(sql, tuple(batch))
+        rows = cur.fetchall()
+
+        for chunk_id, file_name, title, source_url, heading, chunk_text, embedding_json in rows:
+            vec = _parse_sbert_embedding(embedding_json)
+            if vec is None:
+                continue
+            docs_by_chunk_id[int(chunk_id)] = (file_name, title, source_url, heading, chunk_text)
+            vectors_by_chunk_id[int(chunk_id)] = vec
+
+    conn.close()
+
+    docs: list[tuple[str, str, str, str, str]] = []
+    vectors: list[np.ndarray] = []
+    for cid in chunk_ids:
+        if cid not in docs_by_chunk_id or cid not in vectors_by_chunk_id:
+            continue
+        docs.append(docs_by_chunk_id[cid])
+        vectors.append(vectors_by_chunk_id[cid])
+
+    if not vectors:
+        return [], None
+
+    matrix = np.vstack(vectors).astype(np.float32, copy=False)
+    return docs, matrix
+
+
 @lru_cache(maxsize=1)
 def load_sbert_index() -> tuple[
     list[tuple[str, str, str, str, str]],
@@ -269,12 +347,8 @@ def load_sbert_index() -> tuple[
     vectors: list[np.ndarray] = []
     chunk_id_to_index: dict[int, int] = {}
     for chunk_id, file_name, title, source_url, heading, chunk_text, embedding_json in rows:
-        try:
-            vec = np.array(json.loads(embedding_json), dtype=np.float32)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            continue
-
-        if vec.ndim != 1 or vec.size == 0:
+        vec = _parse_sbert_embedding(embedding_json)
+        if vec is None:
             continue
 
         docs.append((file_name, title, source_url, heading, chunk_text))
@@ -420,6 +494,10 @@ def semantic_search_sbert(query: str) -> str:
     if not DB_PATH.exists():
         return "Database not found. Run build_index.py first."
 
+    if not SEMANTIC_ENABLE_SBERT:
+        # Keep semantic tool callable while offering a safe deployment fallback.
+        return search_corpus.invoke({"query": q})
+
     tokens = _stopping_tokens(q)
     if not tokens:
         return "Empty query."
@@ -431,10 +509,31 @@ def semantic_search_sbert(query: str) -> str:
     use_full_index = _semantic_use_full_embedding_index(cur, q, candidate_ids)
     conn.close()
 
-    try:
-        docs, matrix, chunk_id_to_index = load_sbert_index()
-    except sqlite3.OperationalError:
-        return "Embeddings not found. Run sbert_vectors.py first."
+    # Cap candidate set for memory safety; optionally expand if lexical shortlist was weak.
+    max_candidates = max(1, min(SEMANTIC_MAX_CANDIDATES, 2000))
+    expanded_limit = min(
+        max_candidates,
+        max(SEMANTIC_CANDIDATE_LIMIT, SEMANTIC_CANDIDATE_LIMIT * max(1, SEMANTIC_CANDIDATE_EXPANSION_FACTOR)),
+    )
+    if (use_full_index or len(candidate_ids) < FTS_SHORTLIST_MIN_COUNT) and len(candidate_ids) < expanded_limit:
+        conn = get_conn()
+        cur = conn.cursor()
+        candidate_ids = _collect_fts_candidate_ids(cur, q, limit=expanded_limit)
+        conn.close()
+
+    candidate_ids = candidate_ids[:max_candidates]
+    if not candidate_ids:
+        return "No relevant matches found in the corpus."
+
+    docs: list[tuple[str, str, str, str, str]]
+    matrix: Optional[np.ndarray]
+    if use_full_index and SEMANTIC_ALLOW_FULL_INDEX:
+        try:
+            docs, matrix, _ = load_sbert_index()
+        except sqlite3.OperationalError:
+            return "Embeddings not found. Run sbert_vectors.py first."
+    else:
+        docs, matrix = _load_sbert_rows_for_chunk_ids(candidate_ids)
 
     embeddings = get_sbert_model()
     # full original query string preserves phrasing for embedding model, not just token list
@@ -446,24 +545,15 @@ def semantic_search_sbert(query: str) -> str:
     if matrix.shape[1] != query_vector.shape[0]:
         return "No relevant matches found in the corpus."
 
-    if use_full_index:
-        # full-index path prioritizes recall when lexical evidence sparse/weak
-        candidate_indices = list(range(matrix.shape[0]))
-    else:
-        candidate_indices = [chunk_id_to_index[cid] for cid in candidate_ids if cid in chunk_id_to_index]
-        if not candidate_indices or len(candidate_indices) < FTS_SHORTLIST_MIN_COUNT:
-            # mapped shortlist can still shrink after ID->matrix alignment
-            candidate_indices = list(range(matrix.shape[0]))
-
-    candidate_matrix = matrix[candidate_indices]
+    candidate_matrix = matrix
 
     # Vectors are normalized so dot product gives cosine similarity
     similarities = candidate_matrix @ query_vector
     lexical_scores = np.zeros(similarities.shape[0], dtype=np.float32)
     token_set = set(tokens)
     # score each chunk based on keyword overlap and metadata
-    for i, doc_idx in enumerate(candidate_indices):
-        file_name, title, _, heading, chunk_text = docs[doc_idx]
+    for i, doc in enumerate(docs):
+        file_name, title, _, heading, chunk_text = doc
         doc_text = " ".join([
             (file_name or "").lower(),
             (title or "").lower(),
@@ -487,7 +577,7 @@ def semantic_search_sbert(query: str) -> str:
     # Partial sort: select top_k then sort only those indices
     top_idx = np.argpartition(hybrid_scores, -top_k)[-top_k:]
     top_idx = top_idx[np.argsort(hybrid_scores[top_idx])[::-1]]
-    top_rows = [docs[candidate_indices[i]] for i in top_idx]
+    top_rows = [docs[i] for i in top_idx]
     return format_results(top_rows)
 
 # LangChain tool so the model can set a session title on the first turn; paired with extract_chat_title() for APIs.
