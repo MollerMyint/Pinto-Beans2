@@ -57,7 +57,9 @@ Pinto-Beans2/
     ├── requirements.txt
     ├── static/
     │   ├── auth.css
-    │   └── index.css
+    │   ├── index.css
+    │   ├── BillyBronco.png
+    │   └── CPP.png
     └── templates/
         ├── index.html
         ├── login.html
