@@ -1,66 +1,189 @@
 import os
 import asyncio
+import time
+from pathlib import Path
 
 import discord
+import requests
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, AIMessage
-from pathlib import Path
-import os
-from agent.agent import create_agent
 
 # Load environment variables from .env
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR.parent / "agent" / ".env"
-
-load_dotenv()
+load_dotenv(dotenv_path=ENV_PATH)
 
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+DISCORD_AGENT_API_URL = os.getenv("DISCORD_AGENT_API_URL")
 
 if not DISCORD_BOT_TOKEN:
-    raise ValueError("DISCORD_BOT_TOKEN not found in .env")
+    raise ValueError("DISCORD_BOT_TOKEN not found in environment.")
 
-# Discord intents
-# message_content is required so the bot can read DM message text.
+if not DISCORD_AGENT_API_URL:
+    raise ValueError("DISCORD_AGENT_API_URL not found in environment.")
+
 intents = discord.Intents.default()
 intents.message_content = True
 
-
-# Create the Discord client
 client = discord.Client(intents=intents)
 
+SESSION_TIMEOUT_SECONDS = 5 * 60
+WARNING_BEFORE_SECONDS = 60
 
-# ------------------------------------------------------------------
-# In-memory per-user chat history
-# ------------------------------------------------------------------
-# Key: Discord user ID
-# Value: list of LangChain messages [HumanMessage, AIMessage, ...]
-# This exists only while the bot is running.
-# If the bot restarts, everything is forgotten.
-user_histories = {}
+if WARNING_BEFORE_SECONDS >= SESSION_TIMEOUT_SECONDS:
+    raise ValueError("WARNING_BEFORE_SECONDS must be less than SESSION_TIMEOUT_SECONDS.")
 
+# user_id -> {"chat_history": [...], "last_message_ts": float}
+user_sessions: dict[int, dict] = {}
 
-def get_user_history(user_id: int):
-    """Get or create a user's in-memory chat history."""
-    if user_id not in user_histories:
-        user_histories[user_id] = []
-    return user_histories[user_id]
+# user_id -> asyncio.Task
+warning_tasks: dict[int, asyncio.Task] = {}
+expire_tasks: dict[int, asyncio.Task] = {}
 
 
-def run_agent(user_input: str, chat_history: list):
+def get_user_session(user_id: int) -> dict:
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {
+            "chat_history": [],
+            "last_message_ts": 0.0,
+        }
+    return user_sessions[user_id]
+
+
+def cancel_user_timers(user_id: int) -> None:
+    warning_task = warning_tasks.pop(user_id, None)
+    if warning_task:
+        warning_task.cancel()
+
+    expire_task = expire_tasks.pop(user_id, None)
+    if expire_task:
+        expire_task.cancel()
+
+
+def clear_user_session(user_id: int) -> None:
+    cancel_user_timers(user_id)
+    user_sessions.pop(user_id, None)
+
+
+def build_question_with_history(user_input: str, chat_history: list[dict]) -> str:
     """
-    Synchronous helper function that creates a new agent and invokes it.
-
-    We run this inside asyncio.to_thread(...) so the Discord bot
-    does not block while the agent is working.
+    Flatten prior Discord chat history into the question string so the
+    existing Flask route can remain unchanged.
     """
-    agent_executor = create_agent()
+    if not chat_history:
+        return user_input
 
-    response = agent_executor.invoke({
-        "input": user_input,
-        "chat_history": chat_history
-    })
+    lines = [
+        "Use the previous conversation for context when answering the current question.",
+        "",
+        "Previous conversation:"
+    ]
 
-    return response
+    for msg in chat_history:
+        role = msg.get("role")
+        content = (msg.get("content") or "").strip()
+        if not content:
+            continue
+
+        if role == "human":
+            lines.append(f"User: {content}")
+        elif role == "ai":
+            lines.append(f"Assistant: {content}")
+
+    lines.append("")
+    lines.append(f"Current question: {user_input}")
+
+    return "\n".join(lines)
+
+
+def ask_backend(question: str) -> str:
+    response = requests.post(
+        DISCORD_AGENT_API_URL,
+        json={"question": question},
+        timeout=(5, 60),
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    answer = data.get("answer")
+
+    if not isinstance(answer, str) or not answer.strip():
+        raise ValueError("Backend response missing valid 'answer'.")
+
+    return answer
+
+
+async def send_inactivity_warning(user_id: int, channel: discord.DMChannel) -> None:
+    try:
+        await asyncio.sleep(SESSION_TIMEOUT_SECONDS - WARNING_BEFORE_SECONDS)
+
+        session = user_sessions.get(user_id)
+        if not session:
+            return
+
+        if not session.get("chat_history"):
+            return
+
+        last_message_ts = session.get("last_message_ts", 0.0)
+        if not last_message_ts:
+            return
+
+        elapsed = time.time() - last_message_ts
+        remaining = SESSION_TIMEOUT_SECONDS - elapsed
+
+        # Only send the warning if the user is still close to timeout.
+        if remaining <= WARNING_BEFORE_SECONDS + 1:
+            await channel.send(
+                f"Your conversation history will reset in about {WARNING_BEFORE_SECONDS} seconds due to inactivity."
+            )
+
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print(f"Warning task error for user {user_id}: {e}")
+
+
+async def expire_user_session(user_id: int, channel: discord.DMChannel) -> None:
+    try:
+        await asyncio.sleep(SESSION_TIMEOUT_SECONDS)
+
+        session = user_sessions.get(user_id)
+        if not session:
+            return
+
+        if not session.get("chat_history"):
+            return
+
+        last_message_ts = session.get("last_message_ts", 0.0)
+        if not last_message_ts:
+            return
+
+        elapsed = time.time() - last_message_ts
+        if elapsed >= SESSION_TIMEOUT_SECONDS:
+            session["chat_history"] = []
+            session["last_message_ts"] = 0.0
+
+            warning_tasks.pop(user_id, None)
+            expire_tasks.pop(user_id, None)
+
+            await channel.send(
+                "Your previous conversation expired due to inactivity, so I started a new one."
+            )
+
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print(f"Expire task error for user {user_id}: {e}")
+
+
+def restart_session_timers(user_id: int, channel: discord.DMChannel) -> None:
+    cancel_user_timers(user_id)
+
+    warning_tasks[user_id] = asyncio.create_task(
+        send_inactivity_warning(user_id, channel)
+    )
+    expire_tasks[user_id] = asyncio.create_task(
+        expire_user_session(user_id, channel)
+    )
 
 
 @client.event
@@ -71,24 +194,12 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    """
-    Handle incoming messages.
-
-    Rules:
-    - Ignore bot messages
-    - Ignore server/guild messages
-    - Only respond in DMs
-    - Support !reset command
-    """
-    # Ignore messages from bots, including itself
     if message.author.bot:
         return
 
-    # Only respond to DMs and ignore server messages
     if message.guild is not None:
         return
 
-    # Check to make sure we only respond in DM channels
     if not isinstance(message.channel, discord.DMChannel):
         return
 
@@ -98,36 +209,41 @@ async def on_message(message: discord.Message):
     if not user_input:
         return
 
-    # Reset this user's history
     if user_input.lower() == "!reset":
-        user_histories[user_id] = []
+        clear_user_session(user_id)
         await message.channel.send("Your conversation history has been reset.")
         return
 
-    # Get this user's private history
-    chat_history = get_user_history(user_id)
+    session = get_user_session(user_id)
+    chat_history = session["chat_history"]
+    full_question = build_question_with_history(user_input, chat_history)
 
-    # typing indicator so the user sees the bot is working
     async with message.channel.typing():
         try:
-            # Run the synchronous LangChain invoke call in a background thread
-            response = await asyncio.to_thread(
-                run_agent,
-                user_input,
-                chat_history
-            )
+            bot_output = await asyncio.to_thread(ask_backend, full_question)
 
-            bot_output = response["output"]
+            chat_history.append({"role": "human", "content": user_input})
+            chat_history.append({"role": "ai", "content": bot_output})
+            session["last_message_ts"] = time.time()
 
-            # Save conversation history only in memory
-            chat_history.append(HumanMessage(content=user_input))
-            chat_history.append(AIMessage(content=bot_output))
+            restart_session_timers(user_id, message.channel)
 
-            # Send response back to the user
             await message.channel.send(bot_output)
 
+        except requests.Timeout:
+            print(f"Timeout while calling backend for user {user_id}")
+            await message.channel.send(
+                "Sorry, the backend took too long to respond. Please try again in a moment."
+            )
+
+        except requests.RequestException as e:
+            print(f"HTTP error while calling backend for user {user_id}: {e}")
+            await message.channel.send(
+                "Sorry, I couldn't reach the backend right now. Please try again shortly."
+            )
+
         except Exception as e:
-            print(f"Error while handling message from {message.author}: {e}")
+            print(f"Unexpected error while handling message from user {user_id}: {e}")
             await message.channel.send(
                 "Sorry, something went wrong while processing your message."
             )
