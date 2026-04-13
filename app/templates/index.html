@@ -325,7 +325,7 @@
         localStorage.setItem('sidebarCollapsed', isCollapsed);
     });
 
-    // Also set correct label on restore
+    // Restore saved sidebar state on page load
     if (localStorage.getItem('sidebarCollapsed') === 'true') {
         sidebar.classList.add('collapsed');
         sidebarToggleBtn.setAttribute('data-tooltip', 'Open Sidebar');

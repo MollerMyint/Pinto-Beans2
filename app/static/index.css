@@ -219,9 +219,26 @@ body {
     margin: 4px auto;
 }
 
+/* Hide all chat history items when collapsed */
 .sidebar.collapsed .chat-history-item {
+    display: none;
+}
+
+/* Show a single centered search icon in the chat history area when collapsed */
+.sidebar.collapsed .chat-history::before {
+    content: 'chat';
+    font-family: 'Material Symbols Outlined';
+    font-size: 20px;
+    font-variation-settings: 'wght' 300;
+    color: rgba(255, 255, 255, 0.914);
+    display: flex;
     justify-content: center;
     padding: 14px 0;
+    cursor: pointer;
+}
+
+.sidebar.collapsed .chat-history:hover::before {
+    color: #ffffff;
 }
 
 .sidebar.collapsed .chat-icon {
