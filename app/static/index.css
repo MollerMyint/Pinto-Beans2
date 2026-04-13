@@ -61,6 +61,41 @@ body {
     opacity: 1;
 }
 
+/* Discord invite button in the chat header */
+.discord-btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #5865F2;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease;
+    flex-shrink: 0;
+    min-width: 38px;
+    min-height: 38px;
+}
+
+.discord-btn:hover {
+    background: #4752c4;
+    transform: translateY(-1px);
+}
+
+.discord-btn:active {
+    transform: translateY(0);
+}
+
+/* Tooltip for discord button appears to the left */
+.discord-btn[data-tooltip]::after {
+    left: auto;
+    right: calc(100% + 10px);
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+}
+
 /*
    SIDEBAR
    Fixed-width left panel containing the logo,
@@ -184,9 +219,26 @@ body {
     margin: 4px auto;
 }
 
+/* Hide all chat history items when collapsed */
 .sidebar.collapsed .chat-history-item {
+    display: none;
+}
+
+/* Show a single centered search icon in the chat history area when collapsed */
+.sidebar.collapsed .chat-history::before {
+    content: 'chat';
+    font-family: 'Material Symbols Outlined';
+    font-size: 20px;
+    font-variation-settings: 'wght' 300;
+    color: rgba(255, 255, 255, 0.914);
+    display: flex;
     justify-content: center;
     padding: 14px 0;
+    cursor: pointer;
+}
+
+.sidebar.collapsed .chat-history:hover::before {
+    color: #ffffff;
 }
 
 .sidebar.collapsed .chat-icon {
@@ -237,7 +289,7 @@ body {
 /*
    SEARCH BUTTON
    Left-aligned with icon before text, matches new chat style.
-   Search modal overlay and results styles follow.
+   Search popup overlay and results styles follow.
 */
 .search-btn {
     margin: 4px 12px 12px 12px;
@@ -267,8 +319,8 @@ body {
     background: linear-gradient(to right, #FFB81D, #C8E639, #A5D55C);
 }
 
-/* Search modal overlay */
-.search-modal {
+/* Search popup overlay */
+.search-popup {
     display: none;
     position: fixed;
     top: 0;
@@ -282,11 +334,11 @@ body {
     padding-top: 80px;
 }
 
-.search-modal.show {
+.search-popup.show {
     display: flex;
 }
 
-.search-modal-content {
+.search-popup-content {
     background: #ffffff;
     border-radius: 14px;
     width: 100%;
@@ -558,7 +610,7 @@ body {
 
 /*
    RENAME & DELETE CONFIRMATION POPUPS
-   Modal overlays with white content cards
+   popup overlays with white content cards
    for confirming destructive actions
 */
 .popup {
@@ -719,6 +771,8 @@ body {
     font-weight: 600;
     color: #FFFFFF;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
 }
 
 /*
