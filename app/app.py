@@ -179,7 +179,7 @@ def change_title(chat_id):
 
     return jsonify({"chat_id": chat_id, "title": new_title})
 
-@app.route('/change/username', method=['PUT'])
+@app.route('/change/username', methods=['PUT'])
 def change_username():
     user_id = session.get("user_id") # get user_id from session
     if not user_id:
@@ -200,7 +200,7 @@ def change_username():
     mydb.commit()
     return render_template("account.html")
 
-@app.route('/change/email', method=['PUT'])
+@app.route('/change/email', methods=['PUT'])
 def change_email():
     user_id = session.get("user_id")
     if not user_id:
@@ -221,7 +221,7 @@ def change_email():
     mydb.commit()
     return render_template("account.html")
 
-@app.route('/change/password', method=['PUT'])
+@app.route('/change/password', methods=['PUT'])
 def change_password():
     user_id = session.get("user_id")
     if not user_id:
