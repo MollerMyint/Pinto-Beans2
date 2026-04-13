@@ -179,6 +179,73 @@ def change_title(chat_id):
 
     return jsonify({"chat_id": chat_id, "title": new_title})
 
+@app.route('/change/username', method=['PUT'])
+def change_username():
+    user_id = session.get("user_id") # get user_id from session
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json()
+    new_username = data.get("username", "").strip()
+
+    if not new_username:
+        return render_template("account.html", username_error="Username cannot be empty")
+
+    # check if username is already taken
+    mycursor.execute("SELECT user_id FROM users WHERE username = %s", (new_username,))
+    if mycursor.fetchone():
+        return render_template("account.html",username_error="That username is already taken")
+    
+    mycursor.execute("UPDATE users SET username = %s WHERE user_id = %s", (new_username, user_id))
+    mydb.commit()
+    return render_template("account.html")
+
+@app.route('/change/email', method=['PUT'])
+def change_email():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json()
+    new_email = data.get("email", "").strip()
+
+    email_error = validate_email(new_email)
+    if email_error:
+        return render_template("account.html", email_error=email_error)
+
+    mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (new_email,))
+    if mycursor.fetchone():
+        return render_template("account.html", email_error="An account with that email already exists")
+
+    mycursor.execute("UPDATE users SET emailaddress = %s WHERE user_id = %s", (new_email, user_id))
+    mydb.commit()
+    return render_template("account.html")
+
+@app.route('/change/password', method=['PUT'])
+def change_password():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json()
+    old_password = data.get("old_password", "")
+    new_password = data.get("new_password", "")
+    confirm_password = data.get("confirm_password", "")
+
+    # get stored password to validate
+    mycursor.execute("SELECT password FROM users WHERE user_id = %s", (user_id,))
+    result = mycursor.fetchone()
+    if not result:
+        return render_template("account.html", password_error="User not found")
+
+    password_error = validate_password(old_password, new_password, confirm_password, result[0])
+    if password_error:
+        return render_template("account.html", password_error=password_error)
+
+    mycursor.execute("UPDATE users SET password = %s WHERE user_id = %s", (hashPassword(new_password), user_id))
+    mydb.commit()
+    return render_template("account.html")
+
 # return all of the chats that belong to a user
 @app.route('/user/chats', methods=['GET'])
 def get_chats():
@@ -283,11 +350,50 @@ def logout():
     session.clear()
     return redirect('/')
 
+@app.route('/delete/account', methods=['DELETE'])
+def delete_account():
+    user_id = session.get("user_id") # get user_id from session
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    # delete messages for all of this user's chats
+    mycursor.execute("SELECT chat_id FROM chats WHERE user_id = %s", (user_id,))
+    chats = mycursor.fetchall()
+
+    for chat in chats:
+        mycursor.execute("DELETE FROM messages WHERE chat_id = %s", (chat[0],))
+
+    # delete chats and user
+    mycursor.execute("DELETE FROM chats WHERE user_id = %s", (user_id,))
+    mycursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+    mydb.commit()
+
+    session.clear()  # log the user out after deletion
+    return jsonify({"message": "Account deleted successfully"})
+
 # Helper functions 
 def hashPassword(plainText):
     pwd_salt = plainText+s
     hashed = hashlib.sha256(pwd_salt.encode()).hexdigest()
     return hashed
+
+def validate_password(old_password, new_password, confirm_password, stored_hash):
+    if not old_password or not new_password or not confirm_password:
+        return "All password fields are required"
+    if hashPassword(old_password) != stored_hash:
+        return "Old password is incorrect"
+    if new_password != confirm_password:
+        return "New passwords do not match"
+    if old_password == new_password:
+        return "New password must be different from old password"
+    return None
+
+def validate_email(email):
+    if not email:
+        return "Email cannot be empty"
+    if not is_valid_email(email):
+        return "Please enter a valid email address"
+    return None
 
 def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
