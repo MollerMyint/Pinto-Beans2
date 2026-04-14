@@ -514,13 +514,32 @@
                 });
             });
 
-            // Regenerate button: re-sends the last question to the API
-            // and replaces this message's content with the new response
+            // Regenerate button: re-sends the last question to the API and replaces this message's content with the new response
             messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
                 if (!currentChatId || !lastQuestion) return;
+
                 this.disabled = true;
                 const icon = this.querySelector('.material-symbols-outlined');
                 icon.style.animation = 'spin 1s linear infinite';
+
+                // Show loading state in the message bubble
+                const messageText = messageDiv.querySelector('.message-text');
+                const originalHTML = messageText.innerHTML;
+                messageText.innerHTML = `
+                    <div class="loader-wrapper">
+                        <div class="loader"></div>
+                        <div class="letter-wrapper">
+                            <span class="loader-letter">T</span>
+                            <span class="loader-letter">h</span>
+                            <span class="loader-letter">i</span>
+                            <span class="loader-letter">n</span>
+                            <span class="loader-letter">k</span>
+                            <span class="loader-letter">i</span>
+                            <span class="loader-letter">n</span>
+                            <span class="loader-letter">g</span>
+                        </div>
+                    </div>`;
+
                 try {
                     const response = await fetch('/ask', {
                         method: 'POST',
@@ -528,12 +547,25 @@
                         body: JSON.stringify({ question: lastQuestion, chat_id: currentChatId })
                     });
                     const data = await response.json();
-                    messageDiv.querySelector('.message-text').innerHTML = marked.parse(data.answer);
+
+                    if (data.answer) {
+                        messageText.innerHTML = marked.parse(data.answer);
+
+                        // Re-apply new tab to any links in the regenerated response
+                        messageDiv.querySelectorAll('a').forEach(link => {
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                        });
+                    } else {
+                        messageText.innerHTML = originalHTML; // restore on error
+                    }
                 } catch (error) {
                     console.error('Regenerate failed:', error);
+                    messageText.innerHTML = originalHTML; // restore on error
                 }
-                this.disabled          = false;
-                icon.style.animation   = '';
+
+                this.disabled        = false;
+                icon.style.animation = '';
             });
 
         } else {
@@ -631,6 +663,11 @@
                 addMessage(msg.question, 'user');
                 addMessage(msg.answer, 'bot');
             });
+
+            // Set lastQuestion to the most recent question in the chat
+            if (data.messages.length > 0) {
+                lastQuestion = data.messages[data.messages.length - 1].question;
+            }
 
             if (data.messages.length === 0) {
                 addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
