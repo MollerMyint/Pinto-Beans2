@@ -40,14 +40,25 @@
             <div class="chat-history" id="chat-history">
             </div>
 
-            <!-- User bar at the bottom of the sidebar -->
-            <div class="user-bar">
-                <img src="{{ url_for('static', filename='BillyBronco.png') }}" class="user-avatar" alt="BillyBronco">
-                <span class="user-greeting">Hello, {{ username }}!</span>
-                <button class="logout-btn" id="logout-btn" data-tooltip="Logout">
-                    <span class="material-symbols-outlined">logout</span>
+            <!-- Account popup — sits above the user bar -->
+            <div class="account-popup" id="account-popup">
+                <a href="/account" class="account-popup-item" id="account-btn">
+                    <span class="material-symbols-outlined account-popup-icon-mat">account_circle</span>
+                    Account
+                </a>
+                    <button class="account-popup-item account-popup-logout" id="popup-logout-btn">
+                    <span class="material-symbols-outlined account-popup-icon-mat">logout</span>
+                    Log out
                 </button>
             </div>
+
+            <!-- User bar at the bottom of the sidebar -->
+            <button class="user-bar" id="user-bar-btn" data-tooltip="Account">
+                <img src="{{ url_for('static', filename='BillyBronco.png') }}" class="user-avatar" alt="BillyBronco">
+                <span class="user-greeting">Hello, {{ username }}!</span>
+                <span class="material-symbols-outlined user-bar-chevron">expand_less</span>
+            </button>
+
         </div>
 
         <!-- ======MAIN CHAT AREA====== -->
@@ -226,6 +237,11 @@
         "When is the deadline to apply for financial aid?",
         "What dining options are on campus?"
     ];
+
+    // For user profile button at bottom of sidebar
+    const userBarBtn    = document.getElementById('user-bar-btn');
+    const accountPopup  = document.getElementById('account-popup');
+    const popupLogoutBtn = document.getElementById('popup-logout-btn');
 
     // Tracks the last question asked so the regenerate button can re-send it
     let lastQuestion = null;
@@ -480,6 +496,12 @@
                     </button>
                 </div>
             `;
+
+            // Make all links in bot messages open in a new tab
+            messageDiv.querySelectorAll('a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
 
             // Copy button: copies plain text of the response to clipboard
             // and briefly shows a checkmark to confirm success
@@ -789,8 +811,22 @@
         if (e.key === 'Enter') confirmRenameBtn.click();
     });
 
-    // Logout button
-    document.getElementById('logout-btn').addEventListener('click', function() {
+    // User profile button
+    userBarBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        accountPopup.classList.toggle('show');
+        userBarBtn.classList.toggle('open');
+    });
+
+    // Close popup when clicking elsewhere
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.user-bar') && !e.target.closest('.account-popup')) {
+            accountPopup.classList.remove('show');
+            userBarBtn.classList.remove('open');
+        }
+    });
+
+    popupLogoutBtn.addEventListener('click', function() {
         window.location.href = '/logout';
     });
 

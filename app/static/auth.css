@@ -88,6 +88,45 @@ input:focus {
     background: #ffffff;
 }
 
+/* Visbility button for password */
+.password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-wrapper input {
+    margin-bottom: 15px;
+    padding-right: 48px;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: calc(50% - 8px);
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    width: auto;
+    margin-top: 0;
+    box-shadow: none;
+}
+
+.password-toggle:hover {
+    background: transparent;
+    color: #005030;
+    box-shadow: none;
+}
+
+.password-toggle .material-symbols-outlined {
+    font-size: 20px;
+    font-variation-settings: 'wght' 300;
+}
+
 /* Primary submit button */
 button {
     width: 100%;
