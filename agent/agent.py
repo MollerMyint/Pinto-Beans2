@@ -654,7 +654,6 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
         2. Brief supporting details, if available.
         3. Source URL(s), if available and verified from the indexed results.
         4. A brief follow-up or clarifying question, if helpful.
-        5. Confidence score: <number>%
 
         Your goal is to provide accurate, grounded, trustworthy answers from the indexed Cal Poly Pomona website content while avoiding incorrect associations, invented links, incomplete conclusions, or unsupported claims."""
 
