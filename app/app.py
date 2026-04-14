@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify, session, redirect
 from langchain_core.messages import HumanMessage, AIMessage
-from agent.agent import create_agent
+from agent.agent import create_agent, get_sbert_model, load_sbert_index
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -435,8 +435,21 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 
+def preload_sbert_resources():
+    """
+    Warm SBERT resources once at process startup so request-time latency is lower.
+    """
+    try:
+        get_sbert_model()
+        load_sbert_index()
+        print("SBERT model and embedding index preloaded.")
+    except Exception as e:
+        # Keep server boot resilient; agent tools still return graceful fallback messages.
+        print(f"SBERT preload skipped: {e}")
+
 def main():
     print("Starting Flask server...")
+    preload_sbert_resources()
 
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
