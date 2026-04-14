@@ -497,6 +497,12 @@
                 </div>
             `;
 
+            // Make all links in bot messages open in a new tab
+            messageDiv.querySelectorAll('a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
+
             // Copy button: copies plain text of the response to clipboard
             // and briefly shows a checkmark to confirm success
             messageDiv.querySelector('.copy-btn').addEventListener('click', function() {
