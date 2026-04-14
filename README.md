@@ -28,6 +28,11 @@ This project is a Cal Poly Pomona campus knowledge assistant. It answers questio
    - Persists user chats/messages in MySQL tables (`users`, `chats`, `messages`).
    - Calls the same agent from `agent/agent.py`.
 
+5. **Discord bot layer (in `discordAgent/discord_bot.py`)**
+   - Handles Discord direct messages and forwards user questions to the backend API.
+   - Maintains short-term per-user chat history for multi-turn context.
+   - Supports session timeout warnings and manual reset with `!reset`.
+
 ### Retrieval logic
 
 - The agent has two retrieval tools:
@@ -72,6 +77,14 @@ pip install -r requirements.txt
 2. Sign in and create/select a project.
 3. Open API keys and create a new secret key.
 4. Copy it immediately (you will not be able to view it again later).
+
+### 4) Get a Discord Bot and Get A Bot Token
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Click **New Application** and give your app a name.
+3. Open the application, then go to the **Bot** tab.
+4. Click **Add Bot** to create the bot user.
+5. Under the bot settings, click **Reset Token** or **Copy Token** to get your bot token.
 
 ## Database Usage Guide
 
