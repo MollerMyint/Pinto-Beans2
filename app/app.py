@@ -94,7 +94,7 @@ def ask_question():
     chat_id = data.get("chat_id")
 
     if not chat_id:
-        return jsonify({"error": "No chat ID provided."}), 400
+        return jsonify({"error": "No chat ID provided"}), 400
     
     mycursor.execute("SELECT question, answer FROM messages WHERE chat_id = %s ORDER BY message_id ASC", (chat_id,))
     rows = mycursor.fetchall()
@@ -200,15 +200,15 @@ def change_username():
     new_username = data.get("username", "").strip()
 
     if not new_username:
-        return jsonify({"error": "Username cannot be empty."}), 400
+        return jsonify({"error": "Username cannot be empty"}), 400
 
     mycursor.execute("SELECT user_id FROM users WHERE username = %s", (new_username,))
     if mycursor.fetchone():
-        return jsonify({"error": "That username is already taken."}), 409
+        return jsonify({"error": "That username is already taken"}), 409
 
     mycursor.execute("UPDATE users SET username = %s WHERE user_id = %s", (new_username, user_id))
     mydb.commit()
-    return jsonify({"message": "Username updated successfully.", "username": new_username})
+    return jsonify({"message": "Username updated successfully", "username": new_username})
 
 @app.route('/change/email', methods=['PUT'])
 def change_email():
@@ -225,11 +225,11 @@ def change_email():
 
     mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (new_email,))
     if mycursor.fetchone():
-        return jsonify({"error": "An account with that email already exists."}), 409
+        return jsonify({"error": "An account with that email already exists"}), 409
 
     mycursor.execute("UPDATE users SET emailaddress = %s WHERE user_id = %s", (new_email, user_id))
     mydb.commit()
-    return jsonify({"message": "Email updated successfully.", "email": new_email})
+    return jsonify({"message": "Email updated successfully", "email": new_email})
 
 @app.route('/change/password', methods=['PUT'])
 def change_password():
@@ -246,7 +246,7 @@ def change_password():
     mycursor.execute("SELECT password FROM users WHERE user_id = %s", (user_id,))
     result = mycursor.fetchone()
     if not result:
-        return jsonify({"error": "User not found."}), 404
+        return jsonify({"error": "User not found"}), 404
 
     password_error = validate_password(old_password, new_password, confirm_password, result[0])
     if password_error:
@@ -254,7 +254,7 @@ def change_password():
 
     mycursor.execute("UPDATE users SET password = %s WHERE user_id = %s", (hashPassword(new_password), user_id))
     mydb.commit()
-    return jsonify({"message": "Password updated successfully."}) 
+    return jsonify({"message": "Password updated successfully"}) 
 
 # return all of the chats that belong to a user
 @app.route('/user/chats', methods=['GET'])
@@ -323,13 +323,13 @@ def signup():
             # check for dupilcate username or email
             for row in existing:
                 if row[0] == username:
-                    username_error = "That username is already taken."
+                    username_error = "That username is already taken"
                 if row[1] == email:
-                    email_error = "An account with that email already exists."
+                    email_error = "An account with that email already exists"
 
             # validate email format
             if not is_valid_email(email):
-                email_error = "Please enter a valid email address."
+                email_error = "Please enter a valid email address"
 
             if username_error or email_error:
                 # pass back username and email so fields dont clear when error is present
@@ -351,7 +351,7 @@ def signup():
         except Exception as e: 
             # If there's an issue, stay on the signup page until it works
             print("Signup error:", e)
-            return render_template("signup.html", error="Something went wrong, please try again.")
+            return render_template("signup.html", error="Something went wrong, please try again")
     return render_template("signup.html")
 
 # Route to logout
