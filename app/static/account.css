@@ -12,9 +12,16 @@
 */
 body {
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #005030;
-    color: #FFFFFF;
+    background-color: #FFFFFF;
+    background-image:
+        linear-gradient(rgba(0, 80, 48, 0.264) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 80, 48, 0.264) 1px, transparent 1px);
+    background-size: 80px 80px;
+    color: #005030;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;  /* ← change from center to stretch */
     padding: 0;
 }
 
@@ -27,18 +34,26 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
-    margin: 0 auto;      
-    padding: 40px 20px;   
+    padding: 40px 20px;
+    margin: 0 auto;
 }
 
-/* Logo in top left */
 .account-logo {
-    position: fixed;  
-    top: 20px;
-    left: 24px;
+    display: none;
+}
+
+/* Top header bar */
+.account-topbar {
+    width: 100%;
+    background: #003d24;
+    border-bottom: 2px solid #A5D55C;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    padding: 0 20px;
+    height: 64px;
+    flex-shrink: 0;
+    align-self: stretch;  /* ← add this */
 }
 
 .account-logo-icon {
@@ -48,21 +63,19 @@ body {
 .account-logo-text {
     font-size: 20px;
     font-weight: 600;
-    color: #FFFFFF;
+    color: #ffffff;
 }
 
-/*
-   HEADER — back button + title
-*/
-/* Header — just the title now */
 .account-header {
     margin-bottom: 8px;
+    text-align: center;
+
 }
 
 .account-header h1 {
     font-size: 24px;
     font-weight: 600;
-    color: #FFFFFF;
+    color: #005030;
 }
 
 /* Back button — full width, red, inside danger zone */
@@ -91,7 +104,7 @@ body {
    INFO SECTION CARD
 */
 .account-section {
-    background: #ffffff;
+    background: #005030;
     border-radius: 14px;
     border: 2px solid #A5D55C;
     overflow: hidden;
@@ -106,7 +119,7 @@ body {
 
 .account-section p {
     font-size: 14px;
-    color: #6b7280;
+    color: #FFFFFF;
     padding: 0 20px 16px 20px;
 }
 
@@ -128,7 +141,7 @@ body {
 .info-label {
     font-size: 14px;
     font-weight: 500;
-    color: #9ca3af;
+    color: #FFFFFF;
     width: 100px;
     flex-shrink: 0;
 }
@@ -143,7 +156,7 @@ body {
 
 .info-value {
     font-size: 15px;
-    color: #005030;
+    color: #FFFFFF;
     font-weight: 500;
 }
 
@@ -154,7 +167,7 @@ body {
     background: transparent;
     border: none;
     cursor: pointer;
-    color: #9ca3af;
+    color: #FFFFFF;
     display: flex;
     align-items: center;
     padding: 4px;
@@ -176,11 +189,12 @@ body {
    DANGER ZONE
 */
 .danger-zone {
-    border-color: rgba(181, 44, 76, 0.4);
+    border-color: rgba(181, 44, 76, 0.942);
 }
 
 .danger-zone h2 {
-    color: #B52C4C;
+    color: #FFFFFF;
+    font-size: 14pt;
 }
 
 .delete-btn {
