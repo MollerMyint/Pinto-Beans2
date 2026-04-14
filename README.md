@@ -184,6 +184,12 @@ DB_SSL=/absolute/path/to/ca.pem
 
 # Password hashing salt (used for login/signup)
 SALT=your_random_salt_string
+
+#Discord Bot Setup
+DISCORD_BOT_TOKEN=your_discord_bot_token_here
+DISCORD_AGENT_API_URL=http://127.0.0.1:5001/discord/ask
+#DISCORD_AGENT_API_URL should point to your local backend address followed by /discord/ask.
+#For local testing, this is usually http://127.0.0.1:5001/discord/ask or http://localhost:5001/discord/ask.
 ```
 
 > This file is required for the app to connect to the database and run properly.
@@ -213,8 +219,10 @@ python -m app.app
 ```bash
  python -m discordAgent.discord_bot
 ```
+## Notes
 
-The default port in this project is `5001`.
+- The web/backend app must be running before the Discord bot can answer questions.
+- The default port in this project is `5001`.
 
 ## Project Tree
 
@@ -227,26 +235,28 @@ Pinto-Beans2/
 ├── requirements.txt
 ├── agent/
 │   ├── agent.py
-    ├── itc2026_ai_corpus/      # (only included if you choose option 2 in database usage guide)
-    ├── campus_kb.db            # (generate or add locally - not included)
+│   ├── itc2026_ai_corpus/      # (only included if you choose option 2 in database usage guide)
+│   ├── campus_kb.db            # (generate or add locally - not included)
 │   ├── agent_test.py
 │   └── preprocessing/
 │       ├── build_index.py
 │       ├── clean_cpp_markdown.py
 │       ├── openai_vectors.py
 │       └── sbert_vectors.py
-└── app/
-    ├── app.py
-    ├── requirements.txt
-    ├── static/
-        ├── account.css
-    │   ├── auth.css
-    │   ├── index.css
-    │   ├── BillyBronco.png
-    │   └── CPP.png
-    └── templates/
-        ├── account.html
-        ├── index.html
-        ├── login.html
-        └── signup.html
+├── app/
+│   ├── app.py
+│   ├── requirements.txt
+│   ├── static/
+│   │   ├── account.css
+│   │   ├── auth.css
+│   │   ├── index.css
+│   │   ├── BillyBronco.png
+│   │   └── CPP.png
+│   └── templates/
+│       ├── account.html
+│       ├── index.html
+│       ├── login.html
+│       └── signup.html
+└── discordAgent/
+    └── discord_bot.py
 ```
