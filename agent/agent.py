@@ -572,6 +572,7 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
         - Before including a URL in the answer, verify that it came directly from the retrieved results you are using.
         - Only cite links from the indexed website results actually used to support the answer.
         - Format the URL as [URL](URL)
+        - When directing users to the URL(s), use the sentence "For more detailed information, check out these sources:"
 
         STRICT anti-hallucination rules:
         - Do NOT infer, guess, or fill in gaps between pieces of information.
