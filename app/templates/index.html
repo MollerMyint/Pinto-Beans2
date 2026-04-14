@@ -744,17 +744,20 @@
                 loadingMessage.remove();
                 addMessage(data.answer, 'bot');
 
-            } else {
-                // Subsequent messages
-                const response = await fetch('/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question, chat_id: currentChatId })
-                });
-                const data = await response.json();
-                loadingMessage.remove();
-                addMessage(data.answer, 'bot');
-            }
+        } else {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question, chat_id: currentChatId })
+            });
+            const data = await response.json();
+            loadingMessage.remove();
+            addMessage(data.answer, 'bot');
+
+            // Move active chat to top of sidebar
+            const activeChatItem = document.querySelector(`[data-chat-id="${currentChatId}"]`);
+            if (activeChatItem) chatHistory.prepend(activeChatItem);
+        }
         } catch (error) {
             loadingMessage.textContent = 'Something went wrong. Please try again.';
             console.error(error);
