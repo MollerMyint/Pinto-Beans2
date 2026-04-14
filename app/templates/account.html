@@ -9,9 +9,14 @@
 <body>
     <div class="account-container">
 
+        <!-- Added BillyBeans Logo -->
+        <div class="account-logo">
+            <span class="account-logo-icon">🫘</span>
+            <span class="account-logo-text">BillyBeans Bot</span>
+        </div>
+
         <div class="account-header">
-            <a href="/chatUI" class="back-btn">← Back</a>
-            <h1>🫘 Account Information</h1>
+            <h1>Account Information</h1>
         </div>
 
         <!-- Info Section -->
@@ -54,6 +59,8 @@
             <button class="delete-btn" data-target="delete-popup">Delete Account</button>
         </div>
 
+        <a href="/chatUI" class="back-btn">← Back</a>
+
     </div>
 
     <!-- Edit Username Popup -->
@@ -86,9 +93,24 @@
     <div id="password-popup" class="popup">
         <div class="popup-content">
             <h3>Change Password</h3>
-            <input type="password" id="old-password" placeholder="Current password">
-            <input type="password" id="new-password" placeholder="New password">
-            <input type="password" id="confirm-password" placeholder="Confirm new password">
+            <div class="password-wrapper">
+                <input type="password" id="old-password" placeholder="Current password">
+                <button type="button" class="password-toggle" data-input="old-password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+            <div class="password-wrapper">
+                <input type="password" id="new-password" placeholder="New password">
+                <button type="button" class="password-toggle" data-input="new-password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+            <div class="password-wrapper">
+                <input type="password" id="confirm-password" placeholder="Confirm new password">
+                <button type="button" class="password-toggle" data-input="confirm-password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
             <p class="field-error" id="password-error"></p>
             <div class="popup-buttons">
                 <button class="popup-btn cancel-btn" data-close>Cancel</button>
@@ -200,6 +222,21 @@
                 document.getElementById('confirm-password').value = '';
                 closeAll();
             }
+        });
+
+        // Password visibility toggles
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = document.getElementById(this.getAttribute('data-input'));
+                const icon = this.querySelector('.material-symbols-outlined');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility';
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility_off';
+                }
+            });
         });
 
         // Delete account
