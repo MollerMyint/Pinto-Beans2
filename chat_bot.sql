@@ -1,9 +1,7 @@
-CREATE DATABASE pintoBeansdb;
-
 CREATE TABLE `users` (
   `user_id` int PRIMARY KEY AUTO_INCREMENT,
   `username` varchar(50) UNIQUE NOT NULL,
-  `email` varchar(100) UNIQUE NOT NULL,
+  `emailaddress` varchar(100) UNIQUE NOT NULL,
   `password` varchar(255) NOT NULL
 );
 
