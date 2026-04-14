@@ -71,3 +71,11 @@ Run this from the root directory with the virtual environment active.
 ```bash
 python -m app.app
 ```
+
+## 5.3. Run the Agent with Discord
+
+Run this from the root directory with the virtual environment active.
+
+```bash
+ python -m discordAgent.discord_bot
+```
