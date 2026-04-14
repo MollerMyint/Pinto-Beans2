@@ -75,10 +75,8 @@ def ask_discord_agent():
     agent_executor = create_agent()  # Create a new agent to answer the question 
 
     response = agent_executor.invoke({"input": question, "chat_history": []})  # Use the function from agent.py to get the response
-    full_answer = response['output']
-    print(full_answer)
-    parsed_answer = parse_agent_reply(full_answer) 
-    answer = parsed_answer["answer"]
+    answer = response['output']
+    print(answer)
 
     return jsonify({"answer": answer})
 
@@ -108,14 +106,13 @@ def ask_question():
     agent_executor = create_agent()  # Create a new agent to answer the question 
 
     response = agent_executor.invoke({"input": question, "chat_history": chat_history})  # Use the function from agent.py to get the response
-    full_answer = response['output']
-    print(full_answer)
-    parsed_answer = parse_agent_reply(full_answer) 
-    answer = parsed_answer["answer"]
-    confidence = parsed_answer["confidence"] or 0
+    answer = response['output']
+    print(answer)
 
     # save the new Q&A to the messages table
-    mycursor.execute("INSERT INTO messages (chat_id, question, answer, confidence) VALUES (%s, %s, %s, %s)",(chat_id, question, answer, confidence))
+    mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+    # update last activity time
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
     mydb.commit()
 
     return jsonify({"answer": answer, "chat_id": chat_id})
@@ -135,19 +132,23 @@ def new_chat():
         response = agent_executor.invoke({"input": question, "chat_history": []})  # Use the function from agent.py to get the response
         full_answer = response['output']
         print(full_answer)
-        parsed_answer = parse_agent_reply(full_answer) # parse text to split title, answer, confidence
 
-        title = parsed_answer["title"] or "New Chat"
-        answer = parsed_answer["answer"]
-        confidence = parsed_answer["confidence"] or 0
+        title = None
+        answer = full_answer
+
+        # extract title from the reply and strip it from the answer
+        title_match = re.match(r'^\s*\*\*(.*?)\*\*\s*', answer, re.DOTALL)
+        if title_match:
+            title = title_match.group(1).strip().capitalize()
+            answer = answer[title_match.end():].strip()
 
         # insert into tables and extract chat_id
         mycursor.execute("INSERT INTO chats (user_id, title) VALUES (%s, %s)", (user_id, title))
         chat_id = mycursor.lastrowid  # get the ID of the newly created chat
-        mycursor.execute("INSERT INTO messages (chat_id, question, answer, confidence) VALUES (%s, %s, %s, %s)",(chat_id, question, answer, confidence))
+        mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
         mydb.commit()  # Save the new row in the database
 
-        return jsonify({"chat_id": chat_id, "title": title, "answer": answer, "confidence": confidence})
+        return jsonify({"chat_id": chat_id, "title": title, "answer": answer})
 
     except Exception as e:
         print("new_chat error:", e)
@@ -408,27 +409,6 @@ def validate_email(email):
 def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
-
-def parse_agent_reply(reply):
-    reply = (reply or "").strip()
-
-    title = None
-    confidence = None
-    answer = reply
-
-    # extract title from the reply and strip it from the answer
-    title_match = re.match(r'^\s*\*\*(.*?)\*\*\s*', answer, re.DOTALL)
-    if title_match:
-        title = title_match.group(1).strip()
-        answer = answer[title_match.end():].strip()
-    
-    # extract confidence from the reply anf strip it from the aswer
-    confidence_match = re.search(r'\n?\s*Confidence score:\s*(\d{1,3})%\s*$', answer, re.IGNORECASE)
-    if confidence_match:
-        confidence = int(confidence_match.group(1))
-        answer = answer[:confidence_match.start()].strip()
-    
-    return {"title": title, "answer": answer, "confidence": confidence}
 
 def main():
     print("Starting Flask server...")
