@@ -1,16 +1,10 @@
 import os
 import asyncio
 import time
-from pathlib import Path
+import re
 
 import discord
 import requests
-from dotenv import load_dotenv
-
-# Load environment variables from .env
-BASE_DIR = Path(__file__).resolve().parent
-ENV_PATH = BASE_DIR.parent / "agent" / ".env"
-load_dotenv(dotenv_path=ENV_PATH)
 
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 DISCORD_AGENT_API_URL = os.getenv("DISCORD_AGENT_API_URL")
@@ -18,8 +12,11 @@ DISCORD_AGENT_API_URL = os.getenv("DISCORD_AGENT_API_URL")
 if not DISCORD_BOT_TOKEN:
     raise ValueError("DISCORD_BOT_TOKEN not found in environment.")
 
-if not DISCORD_AGENT_API_URL:
-    raise ValueError("DISCORD_AGENT_API_URL not found in environment.")
+#if not DISCORD_AGENT_API_URL:
+    #raise ValueError("DISCORD_AGENT_API_URL not found in environment.")
+
+#Checks if backend is enabled, if not we just say that it isnt enabled but can still send msgs
+BACKEND_ENABLED = bool(DISCORD_AGENT_API_URL and DISCORD_AGENT_API_URL.strip())
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -39,6 +36,13 @@ user_sessions: dict[int, dict] = {}
 warning_tasks: dict[int, asyncio.Task] = {}
 expire_tasks: dict[int, asyncio.Task] = {}
 
+def strip_markdown_links(text: str) -> str:
+    """
+    Convert markdown links like [label](https://example.com)
+    into plain URLs like https://example.com.
+    """
+    pattern = r"\[([^\]]+)\]\((https?://[^\s)]+)\)"
+    return re.sub(pattern, r"\2", text)
 
 def get_user_session(user_id: int) -> dict:
     if user_id not in user_sessions:
@@ -96,6 +100,10 @@ def build_question_with_history(user_input: str, chat_history: list[dict]) -> st
 
 
 def ask_backend(question: str) -> str:
+    if not BACKEND_ENABLED:
+        return (
+            "I’m online, but I’m not connected to the backend yet, so I can’t answer questions right now. Please start the website and try again. https://pinto-beans2.onrender.com/"
+        )
     response = requests.post(
         DISCORD_AGENT_API_URL,
         json={"question": question},
@@ -166,7 +174,7 @@ async def expire_user_session(user_id: int, channel: discord.DMChannel) -> None:
             expire_tasks.pop(user_id, None)
 
             await channel.send(
-                "Your previous conversation expired due to inactivity, so I started a new one."
+                "Your previous conversation expired due to inactivity. Send a question to start a new conversation."
             )
 
     except asyncio.CancelledError:
@@ -189,7 +197,10 @@ def restart_session_timers(user_id: int, channel: discord.DMChannel) -> None:
 @client.event
 async def on_ready():
     print(f"Logged in as {client.user}")
-    print("Bot is ready and listening for DMs.")
+    if BACKEND_ENABLED:
+        print("Bot is ready and listening for DMs.")
+    else:
+        print("Bot is ready, but backend API URL is not configured.")
 
 
 @client.event
@@ -228,18 +239,19 @@ async def on_message(message: discord.Message):
 
             restart_session_timers(user_id, message.channel)
 
-            await message.channel.send(bot_output)
+            clean_output = strip_markdown_links(bot_output)
+            await message.channel.send(clean_output)
 
         except requests.Timeout:
             print(f"Timeout while calling backend for user {user_id}")
             await message.channel.send(
-                "Sorry, the backend took too long to respond. Please try again in a moment."
+                "Sorry, the backend took too long to respond. Please try again in a moment. Make sure the website is running, then try again: https://pinto-beans2.onrender.com/"
             )
 
         except requests.RequestException as e:
             print(f"HTTP error while calling backend for user {user_id}: {e}")
             await message.channel.send(
-                "Sorry, I couldn't reach the backend right now. Please try again shortly."
+                "Sorry, the backend took too long to respond. Please try again in a moment. Make sure the website is running, then try again: https://pinto-beans2.onrender.com/"
             )
 
         except Exception as e:
