@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify, session, redirect
 from langchain_core.messages import HumanMessage, AIMessage
-from agent.agent import create_agent
+from agent.agent import create_agent, get_sbert_model, load_sbert_index
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -92,7 +92,7 @@ def ask_question():
     chat_id = data.get("chat_id")
 
     if not chat_id:
-        return jsonify({"error": "No chat ID provided."}), 400
+        return jsonify({"error": "No chat ID provided"}), 400
     
     mycursor.execute("SELECT question, answer FROM messages WHERE chat_id = %s ORDER BY message_id ASC", (chat_id,))
     rows = mycursor.fetchall()
@@ -111,6 +111,8 @@ def ask_question():
 
     # save the new Q&A to the messages table
     mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+    # update last activity time
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
     mydb.commit()
 
     return jsonify({"answer": answer, "chat_id": chat_id})
@@ -189,6 +191,31 @@ def change_title(chat_id):
 
     return jsonify({"chat_id": chat_id, "title": new_title})
 
+@app.route('/change/message/<int:message_id>', methods=["PUT"])
+def change_chat(message_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json()
+    new_question = data.get("question")
+
+    agent_executor = create_agent(include_title_tool=True)
+    response = agent_executor.invoke({"input": new_question, "chat_history": []})  # Use the function from agent.py to get the response
+    new_answer = response['output']
+
+    mycursor.execute("SELECT chat_id FROM messages WHERE message_id = %s",(message_id,))
+    row = mycursor.fetchone()
+    if not row:
+        return jsonify({"error": "Message not found"}), 404
+    chat_id = row[0]
+
+    mycursor.execute("UPDATE messages SET question = %s, answer = %s WHERE message_id = %s", (new_question, new_answer, message_id))
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
+    mydb.commit()
+
+    return jsonify({"message_id": message_id, "answer": new_answer, "question": new_question})
+
 @app.route('/change/username', methods=['PUT'])
 def change_username():
     user_id = session.get("user_id") # get user_id from session
@@ -199,15 +226,15 @@ def change_username():
     new_username = data.get("username", "").strip()
 
     if not new_username:
-        return jsonify({"error": "Username cannot be empty."}), 400
+        return jsonify({"error": "Username cannot be empty"}), 400
 
     mycursor.execute("SELECT user_id FROM users WHERE username = %s", (new_username,))
     if mycursor.fetchone():
-        return jsonify({"error": "That username is already taken."}), 409
+        return jsonify({"error": "That username is already taken"}), 409
 
     mycursor.execute("UPDATE users SET username = %s WHERE user_id = %s", (new_username, user_id))
     mydb.commit()
-    return jsonify({"message": "Username updated successfully.", "username": new_username})
+    return jsonify({"message": "Username updated successfully", "username": new_username})
 
 @app.route('/change/email', methods=['PUT'])
 def change_email():
@@ -224,11 +251,11 @@ def change_email():
 
     mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (new_email,))
     if mycursor.fetchone():
-        return jsonify({"error": "An account with that email already exists."}), 409
+        return jsonify({"error": "An account with that email already exists"}), 409
 
     mycursor.execute("UPDATE users SET emailaddress = %s WHERE user_id = %s", (new_email, user_id))
     mydb.commit()
-    return jsonify({"message": "Email updated successfully.", "email": new_email})
+    return jsonify({"message": "Email updated successfully", "email": new_email})
 
 @app.route('/change/password', methods=['PUT'])
 def change_password():
@@ -245,7 +272,7 @@ def change_password():
     mycursor.execute("SELECT password FROM users WHERE user_id = %s", (user_id,))
     result = mycursor.fetchone()
     if not result:
-        return jsonify({"error": "User not found."}), 404
+        return jsonify({"error": "User not found"}), 404
 
     password_error = validate_password(old_password, new_password, confirm_password, result[0])
     if password_error:
@@ -253,7 +280,7 @@ def change_password():
 
     mycursor.execute("UPDATE users SET password = %s WHERE user_id = %s", (hashPassword(new_password), user_id))
     mydb.commit()
-    return jsonify({"message": "Password updated successfully."}) 
+    return jsonify({"message": "Password updated successfully"}) 
 
 # return all of the chats that belong to a user
 @app.route('/user/chats', methods=['GET'])
@@ -322,13 +349,13 @@ def signup():
             # check for dupilcate username or email
             for row in existing:
                 if row[0] == username:
-                    username_error = "That username is already taken."
+                    username_error = "That username is already taken"
                 if row[1] == email:
-                    email_error = "An account with that email already exists."
+                    email_error = "An account with that email already exists"
 
             # validate email format
             if not is_valid_email(email):
-                email_error = "Please enter a valid email address."
+                email_error = "Please enter a valid email address"
 
             if username_error or email_error:
                 # pass back username and email so fields dont clear when error is present
@@ -350,7 +377,7 @@ def signup():
         except Exception as e: 
             # If there's an issue, stay on the signup page until it works
             print("Signup error:", e)
-            return render_template("signup.html", error="Something went wrong, please try again.")
+            return render_template("signup.html", error="Something went wrong, please try again")
     return render_template("signup.html")
 
 # Route to logout
@@ -408,29 +435,21 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 
-def parse_agent_reply(reply):
-    reply = (reply or "").strip()
-
-    title = None
-    confidence = None
-    answer = reply
-
-    # extract title from the reply and strip it from the answer
-    title_match = re.match(r'^\s*\*\*(.*?)\*\*\s*', answer, re.DOTALL)
-    if title_match:
-        title = title_match.group(1).strip().capitalize()
-        answer = answer[title_match.end():].strip()
-    
-    # extract confidence from the reply anf strip it from the aswer
-    confidence_match = re.search(r'\n?\s*Confidence score:\s*(\d{1,3})%\s*$', answer, re.IGNORECASE)
-    if confidence_match:
-        confidence = int(confidence_match.group(1))
-        answer = answer[:confidence_match.start()].strip()
-    
-    return {"title": title, "answer": answer, "confidence": confidence}
+def preload_sbert_resources():
+    """
+    Warm SBERT resources once at process startup so request-time latency is lower.
+    """
+    try:
+        get_sbert_model()
+        load_sbert_index()
+        print("SBERT model and embedding index preloaded.")
+    except Exception as e:
+        # Keep server boot resilient; agent tools still return graceful fallback messages.
+        print(f"SBERT preload skipped: {e}")
 
 def main():
     print("Starting Flask server...")
+    preload_sbert_resources()
 
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 

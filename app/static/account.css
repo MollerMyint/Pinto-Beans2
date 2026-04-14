@@ -38,10 +38,6 @@ body {
     margin: 0 auto;
 }
 
-.account-logo {
-    display: none;
-}
-
 /* Top header bar */
 .account-topbar {
     width: 100%;
@@ -113,7 +109,7 @@ body {
 .account-section h2 {
     font-size: 16px;
     font-weight: 600;
-    color: #005030;
+    color: #ffffff;
     padding: 16px 20px 8px 20px;
 }
 
@@ -368,6 +364,28 @@ body {
     font-variation-settings: 'wght' 300;
 }
 
+/* Password requirements list */
+.password-requirements {
+    list-style: none;
+    padding: 4px 0;
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+.password-requirements li {
+    padding: 2px 0;
+    color: #6b7280;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.req-icon {
+    font-size: 16px;
+    font-variation-settings: 'wght' 300;
+}
+
 /*
    FIELD ERROR MESSAGES
 */
@@ -376,4 +394,19 @@ body {
     color: #dc2626;
     min-height: 16px;
     padding: 0;
+}
+
+#password-error {
+    color: #dc2626;
+    text-align: center;
+    font-size: 13px;
+    min-height: 16px;
+}
+
+#email-error,
+#username-error {
+    color: #dc2626;
+    text-align: center;
+    font-size: 13px;
+    min-height: 16px;
 }

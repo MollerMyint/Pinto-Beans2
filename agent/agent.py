@@ -584,6 +584,7 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
         - NEVER combine a page title from one result with a URL from another result.
         - Before including a URL in the answer, verify that it came directly from the retrieved results you are using.
         - Only cite links from the indexed website results actually used to support the answer.
+        - The cited links MUST be from the indexed website content.
         - Format the URL as [URL](URL)
         - When directing users to the URL(s), use the sentence "For more detailed information, check out these sources:"
 
@@ -619,16 +620,21 @@ def create_agent(*, return_intermediate_steps: bool = True, include_title_tool: 
         - Example follow-up style: “I can also help with application deadlines, required documents, or where to submit forms. Would you like one of those?”
 
         When information is missing, weak, or not clearly relevant:
-        - Do NOT respond with loosely related information as though it answers the question.
-        - Clearly say: “I wasn't able to find enough clear information on the website to fully answer that.”
+        - Do NOT create a response from your own knowledge or imagination.
         - If partial information exists, you may share it, but label it clearly as incomplete.
-        - Do NOT combine or reconstruct incomplete information with other fragments.
+        - NEVER combine or reconstruct incomplete information with other fragments.
         - Ask a brief clarifying or redirecting follow-up question.
         - The follow-up question should help the user refine the request or confirm a nearby topic.
         - Example follow-up style:
         - “Did you mean undergraduate admission requirements or transfer admission requirements?”
         - “Were you asking about registration deadlines for the current term or about how registration works in general?”
         - “I found related information about financial aid forms and office contacts. Would you like that instead?”
+
+        When you cannot find any information:
+        - Do NOT respond with loosely related information as though it answers the question.
+        - Clearly say: “I wasn't able to find enough clear information on the website to fully answer that.”
+        - Ask a brief clarifying or redirecting follow-up question.
+        - The follow-up question should help the user refine the request or confirm a nearby topic.
 
         Conversation behavior:
         - Maintain context across turns using the existing chat history.
