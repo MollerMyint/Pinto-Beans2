@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Account - BillyBeans Bot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='account.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+</head>
+<body>
+
+    <!-- Header bar -->
+    <div class="account-topbar">
+        <span class="account-logo-icon">🫘</span>
+        <span class="account-logo-text">BillyBeans Bot</span>
+    </div>
+
+    <!-- Main content container -->
+    <div class="account-container">
+
+        <div class="account-header">
+            <h1>Account Information</h1>
+        </div>
+
+        <!-- Info Section -->
+        <div class="account-section">
+            <div class="info-row">
+                <span class="info-label">Username</span>
+                <div class="info-right">
+                    <span class="info-value" id="display-username">{{ username }}</span>
+                    <button class="edit-btn" data-target="username-popup">
+                        <span class="material-symbols-outlined">edit</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">Email</span>
+                <div class="info-right">
+                    <span class="info-value" id="display-email">{{ email }}</span>
+                    <button class="edit-btn" data-target="email-popup">
+                        <span class="material-symbols-outlined">edit</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">Password</span>
+                <div class="info-right">
+                    <span class="info-value">••••••••</span>
+                    <button class="edit-btn" data-target="password-popup">
+                        <span class="material-symbols-outlined">edit</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="account-section danger-zone">
+            <h2>Danger Zone</h2>
+            <p>Deleting your account is permanent and cannot be undone.</p>
+            <button class="delete-btn" data-target="delete-popup">Delete Account</button>
+        </div>
+
+        <a href="/chatUI" class="back-btn">← Back</a>
+
+    </div>
+
+    <!-- Edit Username Popup -->
+    <div id="username-popup" class="popup">
+        <div class="popup-content">
+            <h3>Change Username</h3>
+            <input type="text" id="new-username" placeholder="New username">
+            <p class="field-error" id="username-error"></p>
+            <div class="popup-buttons">
+                <button class="popup-btn cancel-btn" data-close>Cancel</button>
+                <button class="popup-btn confirm-btn" id="save-username">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Email Popup -->
+    <div id="email-popup" class="popup">
+        <div class="popup-content">
+            <h3>Change Email</h3>
+            <input type="text" id="new-email" placeholder="New email address">
+            <p class="field-error" id="email-error"></p>
+            <div class="popup-buttons">
+                <button class="popup-btn cancel-btn" data-close>Cancel</button>
+                <button class="popup-btn confirm-btn" id="save-email">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Password Popup -->
+    <div id="password-popup" class="popup">
+        <div class="popup-content">
+            <h3>Change Password</h3>
+            <div class="password-wrapper">
+                <input type="password" id="old-password" placeholder="Current password">
+                <button type="button" class="password-toggle" data-input="old-password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+            <div class="password-wrapper">
+                <input type="password" id="new-password" placeholder="New password">
+                <button type="button" class="password-toggle" data-input="new-password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+            <div class="password-wrapper">
+                <input type="password" id="confirm-password" placeholder="Confirm new password">
+                <button type="button" class="password-toggle" data-input="confirm-password">
+                    <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+            </div>
+            <p class="field-error" id="password-error"></p>
+            <div class="popup-buttons">
+                <button class="popup-btn cancel-btn" data-close>Cancel</button>
+                <button class="popup-btn confirm-btn" id="save-password">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Popup -->
+    <div id="delete-popup" class="popup">
+        <div class="popup-content">
+            <h3>Delete Account</h3>
+            <p>Are you sure you want to permanently delete your account? This cannot be undone.</p>
+            <div class="popup-buttons">
+                <button class="popup-btn cancel-btn" data-close>Cancel</button>
+                <button class="popup-btn confirm-btn danger" id="confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Open popups
+        document.querySelectorAll('[data-target]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById(this.getAttribute('data-target')).classList.add('show');
+            });
+        });
+
+        // Close popup on cancel
+        document.querySelectorAll('[data-close]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.popup').classList.remove('show');
+                clearErrors();
+            });
+        });
+
+        // Close popup on outside click
+        document.querySelectorAll('.popup').forEach(popup => {
+            popup.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('show');
+                    clearErrors();
+                }
+            });
+        });
+
+        function clearErrors() {
+            document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+        }
+
+        function closeAll() {
+            document.querySelectorAll('.popup').forEach(p => p.classList.remove('show'));
+            clearErrors();
+        }
+
+        // Save username
+        document.getElementById('save-username').addEventListener('click', async function() {
+            const newUsername = document.getElementById('new-username').value.trim();
+            const response = await fetch('/change/username', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: newUsername })
+            });
+            const data = await response.json();
+            if (data.error) {
+                document.getElementById('username-error').textContent = data.error;
+            } else {
+                document.getElementById('display-username').textContent = newUsername;
+                document.getElementById('new-username').value = '';
+                closeAll();
+            }
+        });
+
+        // Save email
+        document.getElementById('save-email').addEventListener('click', async function() {
+            const newEmail = document.getElementById('new-email').value.trim();
+            const response = await fetch('/change/email', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: newEmail })
+            });
+            const data = await response.json();
+            if (data.error) {
+                document.getElementById('email-error').textContent = data.error;
+            } else {
+                document.getElementById('display-email').textContent = newEmail;
+                document.getElementById('new-email').value = '';
+                closeAll();
+            }
+        });
+
+        // Save password
+        document.getElementById('save-password').addEventListener('click', async function() {
+            const response = await fetch('/change/password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    old_password: document.getElementById('old-password').value,
+                    new_password: document.getElementById('new-password').value,
+                    confirm_password: document.getElementById('confirm-password').value
+                })
+            });
+            const data = await response.json();
+            if (data.error) {
+                document.getElementById('password-error').textContent = data.error;
+            } else {
+                document.getElementById('old-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+                closeAll();
+            }
+        });
+
+        // Password visibility toggles
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = document.getElementById(this.getAttribute('data-input'));
+                const icon = this.querySelector('.material-symbols-outlined');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility';
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility_off';
+                }
+            });
+        });
+
+        // Delete account
+        document.getElementById('confirm-delete').addEventListener('click', async function() {
+            const response = await fetch('/delete/account', { method: 'DELETE' });
+            const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
