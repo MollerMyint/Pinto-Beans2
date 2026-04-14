@@ -150,10 +150,32 @@
             });
 
             // TRIM ALL FIELDS ON SUBMIT
-            document.getElementById('signup-form').addEventListener('submit', function() {
-                document.getElementById('username').value = document.getElementById('username').value.trim();
-                document.getElementById('email').value    = document.getElementById('email').value.trim();
-                document.getElementById('password').value = document.getElementById('password').value.trim();
+            document.getElementById('signup-form').addEventListener('submit', function(e) {
+                const username = document.getElementById('username');
+                const email    = document.getElementById('email');
+                const password = document.getElementById('password');
+
+                username.value = username.value.trim();
+                email.value    = email.value.trim();
+                password.value = password.value.trim();
+
+                const val = password.value;
+
+                const meetsLength  = val.length >= 8;
+                const meetsUpper   = /[A-Z]/.test(val);
+                const meetsNumber  = /[0-9]/.test(val);
+                const meetsSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val);
+
+                if (!meetsLength || !meetsUpper || !meetsNumber || !meetsSpecial) {
+                    e.preventDefault();  // stop the form from submitting
+                    document.getElementById('req-length').classList.toggle('met', meetsLength);
+                    document.getElementById('req-upper').classList.toggle('met', meetsUpper);
+                    document.getElementById('req-number').classList.toggle('met', meetsNumber);
+                    document.getElementById('req-special').classList.toggle('met', meetsSpecial);
+
+                    // scroll to requirements so user can see what's missing
+                    document.querySelector('.password-requirements').scrollIntoView({ behavior: 'smooth' });
+                }
             });
         </script>
     </body>
