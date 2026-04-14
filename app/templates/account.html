@@ -70,7 +70,7 @@
         <div class="popup-content">
             <h3>Change Username</h3>
             <input type="text" id="new-username" placeholder="New username">
-            <p style="color: #dc2626; font-size: 0.875rem; min-height: 1.25rem;" id="username-error"></p>
+            <p class="field-error" id="username-error"></p>
             <div class="popup-buttons">
                 <button class="popup-btn cancel-btn" data-close>Cancel</button>
                 <button class="popup-btn confirm-btn" id="save-username">Save</button>
@@ -172,6 +172,10 @@
                 }
             });
         });
+
+        function clearInputs(popup) {
+            popup.querySelectorAll('input').forEach(input => input.value = '');
+        }
 
         function clearErrors() {
             document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
