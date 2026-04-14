@@ -119,7 +119,7 @@ def new_chat():
     question = data.get("question")
 
     try:
-        agent_executor = create_agent()
+        agent_executor = create_agent(include_title_tool=True)
 
         response = agent_executor.invoke({"input": question, "chat_history": []})  # Use the function from agent.py to get the response
         full_answer = response['output']
