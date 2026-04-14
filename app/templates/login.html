@@ -4,6 +4,7 @@
         <title>Login - BillyBeans Bot</title>
         <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
 
         <!-- CPP banner at login -->
         <style>
@@ -23,7 +24,12 @@
             <h4>Login or create an account!</h4>
             <form method="POST" action="/login">
                 <input type="text" name="username" placeholder="Username">
-                <input type="password" name="password" placeholder="Password">
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" placeholder="Password">
+                    <button type="button" class="password-toggle" id="password-toggle">
+                        <span class="material-symbols-outlined">visibility</span>
+                    </button>
+                </div>
                 {% if error %}
                     <p class="error">{{error}}</p>
                 {% endif %}
@@ -31,5 +37,21 @@
                 <button class="secondary" type="button" onclick="location.href='/signup'">Sign Up</button>
             </form>
         </div>
+
+        <script>
+            const passwordInput = document.getElementById('password');
+            const passwordToggle = document.getElementById('password-toggle');
+            const toggleIcon = passwordToggle.querySelector('.material-symbols-outlined');
+
+            passwordToggle.addEventListener('click', function() {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleIcon.textContent = 'visibility_off';
+                } else {
+                    passwordInput.type = 'password';
+                    toggleIcon.textContent = 'visibility';
+                }
+            });
+        </script>
     </body>
 </html>
