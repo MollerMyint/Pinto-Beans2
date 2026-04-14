@@ -95,6 +95,11 @@
                     </li>
                 </ul>
 
+                <p id="password-error-msg" style="display: none; color: #dc2626; font-size: 13px; margin: -4px 0 12px 0; text-align: center;">
+                    One or more password requirements not met
+                </p>
+
+
                 {% if error %}
                     <p class="error">{{error}}</p>
                 {% endif %}
@@ -155,26 +160,27 @@
                 const email    = document.getElementById('email');
                 const password = document.getElementById('password');
 
+                // Trim FIRST before validating
                 username.value = username.value.trim();
                 email.value    = email.value.trim();
                 password.value = password.value.trim();
 
-                const val = password.value;
-
+                const val = password.value;  // use trimmed value for checks
                 const meetsLength  = val.length >= 8;
                 const meetsUpper   = /[A-Z]/.test(val);
                 const meetsNumber  = /[0-9]/.test(val);
                 const meetsSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val);
+                const passwordErrorMsg = document.getElementById('password-error-msg');
 
                 if (!meetsLength || !meetsUpper || !meetsNumber || !meetsSpecial) {
-                    e.preventDefault();  // stop the form from submitting
+                    e.preventDefault();
                     document.getElementById('req-length').classList.toggle('met', meetsLength);
                     document.getElementById('req-upper').classList.toggle('met', meetsUpper);
                     document.getElementById('req-number').classList.toggle('met', meetsNumber);
                     document.getElementById('req-special').classList.toggle('met', meetsSpecial);
-
-                    // scroll to requirements so user can see what's missing
-                    document.querySelector('.password-requirements').scrollIntoView({ behavior: 'smooth' });
+                    passwordErrorMsg.style.display = 'block';
+                } else {
+                    passwordErrorMsg.style.display = 'none';
                 }
             });
         </script>
