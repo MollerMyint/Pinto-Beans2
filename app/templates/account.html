@@ -70,7 +70,7 @@
         <div class="popup-content">
             <h3>Change Username</h3>
             <input type="text" id="new-username" placeholder="New username">
-            <p class="field-error" id="username-error"></p>
+            <p style="color: #dc2626; font-size: 0.875rem; min-height: 1.25rem;" id="username-error"></p>
             <div class="popup-buttons">
                 <button class="popup-btn cancel-btn" data-close>Cancel</button>
                 <button class="popup-btn confirm-btn" id="save-username">Save</button>
@@ -113,6 +113,16 @@
                     <span class="material-symbols-outlined">visibility_off</span>
                 </button>
             </div>
+
+            <!-- PASSWORD REQUIREMENTS LIST -->
+            <ul class="password-requirements" id="password-requirements">
+                <li id="req-length"><span class="material-symbols-outlined req-icon">check_circle</span>At least 8 characters</li>
+                <li id="req-upper"><span class="material-symbols-outlined req-icon">check_circle</span>At least one uppercase letter</li>
+                <li id="req-lower"><span class="material-symbols-outlined req-icon">check_circle</span>At least one lowercase letter</li>
+                <li id="req-number"><span class="material-symbols-outlined req-icon">check_circle</span>At least one number</li>
+                <li id="req-match"><span class="material-symbols-outlined req-icon">check_circle</span>Passwords match</li>
+            </ul>
+
             <p class="field-error" id="password-error"></p>
             <div class="popup-buttons">
                 <button class="popup-btn cancel-btn" data-close>Cancel</button>
@@ -146,6 +156,8 @@
             btn.addEventListener('click', function() {
                 this.closest('.popup').classList.remove('show');
                 clearErrors();
+                clearInputs(this.closest('.popup'));
+                resetPasswordRequirements();
             });
         });
 
@@ -155,18 +167,53 @@
                 if (e.target === this) {
                     this.classList.remove('show');
                     clearErrors();
+                    clearInputs(this);
+                    resetPasswordRequirements();
                 }
             });
         });
 
         function clearErrors() {
             document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+            document.getElementById('username-error').textContent = '';
         }
 
         function closeAll() {
             document.querySelectorAll('.popup').forEach(p => p.classList.remove('show'));
             clearErrors();
+            resetPasswordRequirements();
         }
+
+        // PASSWORD REQUIREMENTS
+        function checkPasswordRequirements(newPwd, confirmPwd) {
+            const reqs = {
+                'req-length': newPwd.length >= 8,
+                'req-upper':  /[A-Z]/.test(newPwd),
+                'req-lower':  /[a-z]/.test(newPwd),
+                'req-number': /[0-9]/.test(newPwd),
+                'req-match':  newPwd.length > 0 && newPwd === confirmPwd,
+            };
+            for (const [id, passed] of Object.entries(reqs)) {
+                const el = document.getElementById(id);
+                el.style.color = passed ? '#16a34a' : '#dc2626';
+            }
+            return Object.values(reqs).every(Boolean);
+        }
+
+        function resetPasswordRequirements() {
+            ['req-length', 'req-upper', 'req-lower', 'req-number', 'req-match'].forEach(id => {
+                document.getElementById(id).style.color = '';
+            });
+        }
+
+        // Live validation as user types
+        ['new-password', 'confirm-password'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                const newPwd = document.getElementById('new-password').value;
+                const confirmPwd = document.getElementById('confirm-password').value;
+                checkPasswordRequirements(newPwd, confirmPwd);
+            });
+        });
 
         // Save username
         document.getElementById('save-username').addEventListener('click', async function() {
@@ -206,18 +253,29 @@
 
         // Save password
         document.getElementById('save-password').addEventListener('click', async function() {
+            const oldPwd = document.getElementById('old-password').value;
+            const newPwd = document.getElementById('new-password').value;
+            const confirmPwd = document.getElementById('confirm-password').value;
+            const errorEl = document.getElementById('password-error');
+
+            const allMet = checkPasswordRequirements(newPwd, confirmPwd);
+            if (!allMet) {
+                errorEl.textContent = 'One or more password requirements not met.' ;
+                return;
+            }
+
             const response = await fetch('/change/password', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    old_password: document.getElementById('old-password').value,
-                    new_password: document.getElementById('new-password').value,
-                    confirm_password: document.getElementById('confirm-password').value
+                    old_password: oldPwd,
+                    new_password: newPwd,
+                    confirm_password: confirmPwd
                 })
             });
             const data = await response.json();
             if (data.error) {
-                document.getElementById('password-error').textContent = data.error;
+                errorEl.textContent = data.error;
             } else {
                 document.getElementById('old-password').value = '';
                 document.getElementById('new-password').value = '';
