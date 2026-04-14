@@ -191,6 +191,31 @@ def change_title(chat_id):
 
     return jsonify({"chat_id": chat_id, "title": new_title})
 
+@app.route('/change/message/<int:message_id>', methods=["PUT"])
+def change_chat(message_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json()
+    new_question = data.get("question")
+
+    agent_executor = create_agent(include_title_tool=True)
+    response = agent_executor.invoke({"input": new_question, "chat_history": []})  # Use the function from agent.py to get the response
+    new_answer = response['output']
+
+    mycursor.execute("SELECT chat_id FROM messages WHERE message_id = %s",(message_id,))
+    row = mycursor.fetchone()
+    if not row:
+        return jsonify({"error": "Message not found"}), 404
+    chat_id = row[0]
+
+    mycursor.execute("UPDATE messages SET question = %s, answer = %s WHERE message_id = %s", (new_question, new_answer, message_id))
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
+    mydb.commit()
+
+    return jsonify({"message_id": message_id, "answer": new_answer, "question": new_question})
+
 @app.route('/change/username', methods=['PUT'])
 def change_username():
     user_id = session.get("user_id") # get user_id from session
