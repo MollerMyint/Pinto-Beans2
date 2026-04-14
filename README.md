@@ -56,11 +56,13 @@ Pinto-Beans2/
     ├── app.py
     ├── requirements.txt
     ├── static/
+        ├── account.css
     │   ├── auth.css
     │   ├── index.css
     │   ├── BillyBronco.png
     │   └── CPP.png
     └── templates/
+        ├── account.html
         ├── index.html
         ├── login.html
         └── signup.html

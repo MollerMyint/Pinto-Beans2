@@ -47,6 +47,17 @@ s = os.getenv("SALT")
 def home():
     return render_template("login.html")
 
+@app.route('/account')
+def account():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/")
+    
+    mycursor.execute("SELECT username, emailaddress FROM users WHERE user_id = %s", (user_id,))
+    result = mycursor.fetchone()
+
+    return render_template("account.html", username=result[0], email=result[1])
+
 @app.route('/chatUI')
 def chatUI():
     user_id = session.get("user_id")
@@ -189,16 +200,15 @@ def change_username():
     new_username = data.get("username", "").strip()
 
     if not new_username:
-        return render_template("account.html", username_error="Username cannot be empty")
+        return jsonify({"error": "Username cannot be empty."}), 400
 
-    # check if username is already taken
     mycursor.execute("SELECT user_id FROM users WHERE username = %s", (new_username,))
     if mycursor.fetchone():
-        return render_template("account.html",username_error="That username is already taken")
-    
+        return jsonify({"error": "That username is already taken."}), 409
+
     mycursor.execute("UPDATE users SET username = %s WHERE user_id = %s", (new_username, user_id))
     mydb.commit()
-    return render_template("account.html")
+    return jsonify({"message": "Username updated successfully.", "username": new_username})
 
 @app.route('/change/email', methods=['PUT'])
 def change_email():
@@ -211,15 +221,15 @@ def change_email():
 
     email_error = validate_email(new_email)
     if email_error:
-        return render_template("account.html", email_error=email_error)
+        return jsonify({"error": email_error}), 400
 
     mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (new_email,))
     if mycursor.fetchone():
-        return render_template("account.html", email_error="An account with that email already exists")
+        return jsonify({"error": "An account with that email already exists."}), 409
 
     mycursor.execute("UPDATE users SET emailaddress = %s WHERE user_id = %s", (new_email, user_id))
     mydb.commit()
-    return render_template("account.html")
+    return jsonify({"message": "Email updated successfully.", "email": new_email})
 
 @app.route('/change/password', methods=['PUT'])
 def change_password():
@@ -236,15 +246,15 @@ def change_password():
     mycursor.execute("SELECT password FROM users WHERE user_id = %s", (user_id,))
     result = mycursor.fetchone()
     if not result:
-        return render_template("account.html", password_error="User not found")
+        return jsonify({"error": "User not found."}), 404
 
     password_error = validate_password(old_password, new_password, confirm_password, result[0])
     if password_error:
-        return render_template("account.html", password_error=password_error)
+        return jsonify({"error": password_error}), 400  
 
     mycursor.execute("UPDATE users SET password = %s WHERE user_id = %s", (hashPassword(new_password), user_id))
     mydb.commit()
-    return render_template("account.html")
+    return jsonify({"message": "Password updated successfully."}) 
 
 # return all of the chats that belong to a user
 @app.route('/user/chats', methods=['GET'])
