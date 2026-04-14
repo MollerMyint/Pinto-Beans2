@@ -111,6 +111,8 @@ def ask_question():
 
     # save the new Q&A to the messages table
     mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+    # update last activity time
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
     mydb.commit()
 
     return jsonify({"answer": answer, "chat_id": chat_id})
@@ -407,27 +409,6 @@ def validate_email(email):
 def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
-
-def parse_agent_reply(reply):
-    reply = (reply or "").strip()
-
-    title = None
-    confidence = None
-    answer = reply
-
-    # extract title from the reply and strip it from the answer
-    title_match = re.match(r'^\s*\*\*(.*?)\*\*\s*', answer, re.DOTALL)
-    if title_match:
-        title = title_match.group(1).strip().capitalize()
-        answer = answer[title_match.end():].strip()
-    
-    # extract confidence from the reply anf strip it from the aswer
-    confidence_match = re.search(r'\n?\s*Confidence score:\s*(\d{1,3})%\s*$', answer, re.IGNORECASE)
-    if confidence_match:
-        confidence = int(confidence_match.group(1))
-        answer = answer[:confidence_match.start()].strip()
-    
-    return {"title": title, "answer": answer, "confidence": confidence}
 
 def main():
     print("Starting Flask server...")
