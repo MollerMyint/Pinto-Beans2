@@ -4,16 +4,51 @@
         <title>Sign Up - BillyBeans Bot</title>
         <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
 
-        <!-- CPP banner at login -->
         <style>
             body {
                 background: 
                     linear-gradient(rgba(0, 80, 48, 0.50), rgba(0, 80, 48, 0.50)),
                     url("{{ url_for('static', filename='CPP.png') }}") center/cover no-repeat fixed !important;
             }
-        </style>
 
+            .password-requirements {
+                list-style: none;
+                padding: 0;
+                margin: -8px 0 12px 0;
+                text-align: left;
+            }
+
+            .password-requirements li {
+                font-size: 13px;
+                font-family: 'IBM Plex Sans', sans-serif;
+                color: #9ca3af;
+                padding: 3px 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                transition: color 0.2s ease;
+            }
+
+            .password-requirements li.met {
+                color: #005030;
+                font-weight: 500;
+            }
+
+            .req-icon {
+                font-size: 16px;
+                transition: color 0.2s ease;
+            }
+
+            .password-requirements li .req-icon {
+                color: #d1d5db;
+            }
+
+            .password-requirements li.met .req-icon {
+                color: #A5D55C;
+            }
+        </style>
     </head>
     <body>
         <div class="auth-container">
@@ -22,22 +57,104 @@
                 <h2>New? Create an account!</h2>
             </div>
             <h4>Please fill in your information</h4>
-            <form method="POST" action="/signup">
-                <input type="text" name="username" placeholder="Username" value="{{ username or '' }}">
+            <form method="POST" action="/signup" id="signup-form">
+                <input type="text" name="username" id="username" placeholder="Username" value="{{ username or '' }}">
                 {% if username_error %}
                     <p class="error">{{username_error}}</p>
                 {% endif %}
-                <input type="text" name="email" placeholder="Email Address" value="{{ email or '' }}">
+
+                <input type="text" name="email" id="email" placeholder="Email Address" value="{{ email or '' }}">
                 {% if email_error %}
                     <p class="error">{{email_error}}</p>
                 {% endif %}
-                <input type="password" name="password" placeholder="Password">
+
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" placeholder="Password">
+                    <button type="button" class="password-toggle" id="password-toggle">
+                        <span class="material-symbols-outlined">visibility_off</span>
+                    </button>
+                </div>
+
+                <!-- Password requirements checklist -->
+                <ul class="password-requirements">
+                    <li id="req-length">
+                        <span class="material-symbols-outlined req-icon">check_circle</span>
+                        At least 8 characters
+                    </li>
+                    <li id="req-upper">
+                        <span class="material-symbols-outlined req-icon">check_circle</span>
+                        At least one uppercase letter
+                    </li>
+                    <li id="req-number">
+                        <span class="material-symbols-outlined req-icon">check_circle</span>
+                        At least one number
+                    </li>
+                    <li id="req-special">
+                        <span class="material-symbols-outlined req-icon">check_circle</span>
+                        At least one special character (!@#$%^&*)
+                    </li>
+                </ul>
+
                 {% if error %}
                     <p class="error">{{error}}</p>
                 {% endif %}
+
                 <button type="submit">Submit</button>
                 <button class="secondary" onclick="location.href='/login'" type="button">Back</button>
             </form>
         </div>
+
+        <script>
+            // TRIM TRAILING SPACES ON ALL TEXT INPUTS
+            document.querySelectorAll('input[type="text"]').forEach(input => {
+                input.addEventListener('blur', function() {
+                    this.value = this.value.trim();
+                });
+            });
+
+            // PASSWORD VISIBILITY TOGGLE
+            const passwordInput  = document.getElementById('password');
+            const passwordToggle = document.getElementById('password-toggle');
+            const toggleIcon     = passwordToggle.querySelector('.material-symbols-outlined');
+
+            passwordToggle.addEventListener('click', function() {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleIcon.textContent = 'visibility';
+                } else {
+                    passwordInput.type = 'password';
+                    toggleIcon.textContent = 'visibility_off';
+                }
+            });
+
+            // PASSWORD REQUIREMENTS CHECKER
+            const reqLength  = document.getElementById('req-length');
+            const reqUpper   = document.getElementById('req-upper');
+            const reqNumber  = document.getElementById('req-number');
+            const reqSpecial = document.getElementById('req-special');
+
+            function checkRequirement(element, condition) {
+                if (condition) {
+                    element.classList.add('met');
+                } else {
+                    element.classList.remove('met');
+                }
+            }
+
+            passwordInput.addEventListener('input', function() {
+                const val = this.value;
+                checkRequirement(reqLength,  val.length >= 8);
+                checkRequirement(reqUpper,   /[A-Z]/.test(val));
+                checkRequirement(reqNumber,  /[0-9]/.test(val));
+                checkRequirement(reqSpecial, /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val));
+            });
+
+            // TRIM ALL FIELDS ON SUBMIT
+            document.getElementById('signup-form').addEventListener('submit', function() {
+                document.getElementById('username').value = document.getElementById('username').value.trim();
+                document.getElementById('email').value    = document.getElementById('email').value.trim();
+                document.getElementById('password').value = document.getElementById('password').value.trim();
+            });
+        </script>
     </body>
 </html>
