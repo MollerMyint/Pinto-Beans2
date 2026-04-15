@@ -99,19 +99,19 @@
             <div class="password-wrapper">
                 <input type="password" id="old-password" placeholder="Current password">
                 <button type="button" class="password-toggle" data-input="old-password">
-                    <span class="material-symbols-outlined">visibility_off</span>
+                    <span class="material-symbols-outlined">visibility</span>
                 </button>
             </div>
             <div class="password-wrapper">
                 <input type="password" id="new-password" placeholder="New password">
                 <button type="button" class="password-toggle" data-input="new-password">
-                    <span class="material-symbols-outlined">visibility_off</span>
+                    <span class="material-symbols-outlined">visibility</span>
                 </button>
             </div>
             <div class="password-wrapper">
                 <input type="password" id="confirm-password" placeholder="Confirm new password">
                 <button type="button" class="password-toggle" data-input="confirm-password">
-                    <span class="material-symbols-outlined">visibility_off</span>
+                    <span class="material-symbols-outlined">visibility</span>
                 </button>
             </div>
 
@@ -119,7 +119,6 @@
             <ul class="password-requirements" id="password-requirements">
                 <li id="req-length"><span class="material-symbols-outlined req-icon">check_circle</span>At least 8 characters</li>
                 <li id="req-upper"><span class="material-symbols-outlined req-icon">check_circle</span>At least one uppercase letter</li>
-                <li id="req-lower"><span class="material-symbols-outlined req-icon">check_circle</span>At least one lowercase letter</li>
                 <li id="req-number"><span class="material-symbols-outlined req-icon">check_circle</span>At least one number</li>
                 <li id="req-match"><span class="material-symbols-outlined req-icon">check_circle</span>Passwords match</li>
             </ul>
@@ -149,6 +148,7 @@
         document.querySelectorAll('[data-target]').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.getElementById(this.getAttribute('data-target')).classList.add('show');
+                resetPasswordRequirements();
             });
         });
 
@@ -194,7 +194,6 @@
             const reqs = {
                 'req-length': newPwd.length >= 8,
                 'req-upper':  /[A-Z]/.test(newPwd),
-                'req-lower':  /[a-z]/.test(newPwd),
                 'req-number': /[0-9]/.test(newPwd),
                 'req-match':  newPwd.length > 0 && newPwd === confirmPwd,
             };
@@ -206,8 +205,9 @@
         }
 
         function resetPasswordRequirements() {
-            ['req-length', 'req-upper', 'req-lower', 'req-number', 'req-match'].forEach(id => {
-                document.getElementById(id).style.color = '';
+            ['req-length', 'req-upper', 'req-number', 'req-match'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.color = '';
             });
         }
 
