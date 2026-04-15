@@ -227,12 +227,9 @@ def change_username():
     data = request.get_json()
     new_username = data.get("username", "").strip()
 
-    if not new_username:
-        return jsonify({"error": "Username cannot be empty"}), 400
-
-    mycursor.execute("SELECT user_id FROM users WHERE username = %s", (new_username,))
-    if mycursor.fetchone():
-        return jsonify({"error": "That username is already taken"}), 409
+    username_error = validate_username(new_username)
+    if username_error:
+        return jsonify({"error": username_error}), 400
 
     mycursor.execute("UPDATE users SET username = %s WHERE user_id = %s", (new_username, user_id))
     mydb.commit()
@@ -250,10 +247,6 @@ def change_email():
     email_error = validate_email(new_email)
     if email_error:
         return jsonify({"error": email_error}), 400
-
-    mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (new_email,))
-    if mycursor.fetchone():
-        return jsonify({"error": "An account with that email already exists"}), 409
 
     mycursor.execute("UPDATE users SET emailaddress = %s WHERE user_id = %s", (new_email, user_id))
     mydb.commit()
@@ -342,22 +335,9 @@ def signup():
             email = request.form['email']
             password = request.form['password']
 
-            mycursor.execute("SELECT username, emailaddress FROM users WHERE username = %s OR emailaddress = %s", (username, email))
-            existing = mycursor.fetchall()
-
-            username_error = None
-            email_error = None
-
-            # check for dupilcate username or email
-            for row in existing:
-                if row[0] == username:
-                    username_error = "That username is already taken"
-                if row[1] == email:
-                    email_error = "An account with that email already exists"
-
-            # validate email format
-            if not is_valid_email(email):
-                email_error = "Please enter a valid email address"
+            # validate email and username
+            username_error = validate_username(username)
+            email_error = validate_email(email)
 
             if username_error or email_error:
                 # pass back username and email so fields dont clear when error is present
@@ -426,11 +406,24 @@ def validate_password(old_password, new_password, confirm_password, stored_hash)
         return "New password must be different from old password"
     return None
 
+def validate_username(username):
+    if not username:
+        return "Username cannot be empty"
+    
+    mycursor.execute("SELECT user_id FROM users WHERE username = %s", (username,))
+    if mycursor.fetchone():
+        return "An account with that username already exists"
+    return None
+    
 def validate_email(email):
     if not email:
         return "Email cannot be empty"
     if not is_valid_email(email):
         return "Please enter a valid email address"
+    
+    mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (email,))
+    if mycursor.fetchone():
+        return "An account with that email already exists"
     return None
 
 def is_valid_email(email):
