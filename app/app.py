@@ -47,6 +47,10 @@ s = os.getenv("SALT")
 def home():
     return render_template("login.html")
 
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template("404.html"), 404
+
 @app.route('/account')
 def account():
     user_id = session.get("user_id")
