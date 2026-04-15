@@ -492,7 +492,7 @@
     // user or bot. Bot messages are parsed through
     // marked.js to render markdown (bold, lists,
     // links) and include copy + regenerate buttons
-        function addMessage(text, sender) {
+    function addMessage(text, sender) {
         const messageDiv     = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
         const parsedText     = marked.parse(text);
@@ -504,20 +504,14 @@
                     <button class="action-btn copy-btn" title="Copy">
                         <span class="material-symbols-outlined">content_copy</span>
                     </button>
-                    <button class="action-btn regenerate-btn" title="Regenerate">
-                        <span class="material-symbols-outlined">replay</span>
-                    </button>
                 </div>
             `;
 
-            // Make all links in bot messages open in a new tab
             messageDiv.querySelectorAll('a').forEach(link => {
                 link.setAttribute('target', '_blank');
                 link.setAttribute('rel', 'noopener noreferrer');
             });
 
-            // Copy button: copies plain text of the response to clipboard
-            // and briefly shows a checkmark to confirm success
             messageDiv.querySelector('.copy-btn').addEventListener('click', function() {
                 const textToCopy = messageDiv.querySelector('.message-text').innerText;
                 navigator.clipboard.writeText(textToCopy).then(() => {
@@ -527,60 +521,6 @@
                 });
             });
 
-            // Regenerate button: re-sends the last question to the API and replaces this message's content with the new response
-            messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
-                if (!currentChatId || !lastQuestion || !lastMessageId) return;
-
-                this.disabled = true;
-                const icon = this.querySelector('.material-symbols-outlined');
-                icon.style.animation = 'spin 1s linear infinite';
-
-                // Show loading state in the message bubble
-                const messageText = messageDiv.querySelector('.message-text');
-                const originalHTML = messageText.innerHTML;
-                messageText.innerHTML = `
-                    <div class="loader-wrapper">
-                        <div class="loader"></div>
-                        <div class="letter-wrapper">
-                            <span class="loader-letter">T</span>
-                            <span class="loader-letter">h</span>
-                            <span class="loader-letter">i</span>
-                            <span class="loader-letter">n</span>
-                            <span class="loader-letter">k</span>
-                            <span class="loader-letter">i</span>
-                            <span class="loader-letter">n</span>
-                            <span class="loader-letter">g</span>
-                        </div>
-                    </div>`;
-
-                try {
-                    const response = await fetch(`/change/message/${lastMessageId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ question: lastQuestion })
-                    });
-                    const data = await response.json();
-
-                    if (data.answer) {
-                        messageText.innerHTML = marked.parse(data.answer);
-
-                        // Re-apply new tab to any links in the regenerated response
-                        messageDiv.querySelectorAll('a').forEach(link => {
-                            link.setAttribute('target', '_blank');
-                            link.setAttribute('rel', 'noopener noreferrer');
-                        });
-                    } else {
-                        messageText.innerHTML = originalHTML;
-                    }
-                } catch (error) {
-                    console.error('Regenerate failed:', error);
-                    messageText.innerHTML = originalHTML;
-                }
-
-                this.disabled        = false;
-                icon.style.animation = '';
-            });
-
         } else {
             messageDiv.innerHTML = parsedText;
         }
@@ -588,22 +528,79 @@
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Disable all regenerate buttons except last one
         if (sender === 'bot') updateRegenerateButtons();
     }
 
-    // Disable all regenerate buttons except the most recent one
+
     function updateRegenerateButtons() {
-        const allRegenBtns = chatMessages.querySelectorAll('.regenerate-btn');
-        allRegenBtns.forEach((btn, index) => {
-            if (index < allRegenBtns.length - 1) {
-                btn.disabled       = true;
-                btn.style.opacity  = '0.3';
-                btn.style.cursor   = 'not-allowed';
-            } else {
-                btn.disabled       = false;
-                btn.style.opacity  = '';
-                btn.style.cursor   = '';
+        const allBotMessages = chatMessages.querySelectorAll('.bot-message');
+
+        allBotMessages.forEach((msg, index) => {
+            const actions = msg.querySelector('.message-actions');
+            if (!actions) return;
+
+            const existing = actions.querySelector('.regenerate-btn');
+            if (existing) existing.remove();
+
+            if (index === allBotMessages.length - 1) {
+                const regenBtn = document.createElement('button');
+                regenBtn.className = 'action-btn regenerate-btn';
+                regenBtn.title = 'Regenerate';
+                regenBtn.innerHTML = `<span class="material-symbols-outlined">replay</span>`;
+                actions.appendChild(regenBtn);
+
+                regenBtn.addEventListener('click', async function() {
+                    if (!currentChatId || !lastQuestion || !lastMessageId) return;
+
+                    this.disabled = true;
+                    const icon = this.querySelector('.material-symbols-outlined');
+                    icon.style.animation = 'spin 1s linear infinite';
+
+                    const messageText = msg.querySelector('.message-text');
+                    const originalHTML = messageText.innerHTML;
+                    messageText.innerHTML = `
+                        <div class="loader-wrapper">
+                            <div class="loader"></div>
+                            <div class="letter-wrapper">
+                                <span class="loader-letter">T</span>
+                                <span class="loader-letter">h</span>
+                                <span class="loader-letter">i</span>
+                                <span class="loader-letter">n</span>
+                                <span class="loader-letter">k</span>
+                                <span class="loader-letter">i</span>
+                                <span class="loader-letter">n</span>
+                                <span class="loader-letter">g</span>
+                            </div>
+                        </div>`;
+
+                    try {
+                        const response = await fetch(`/change/message/${lastMessageId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ question: lastQuestion })
+                        });
+                        const data = await response.json();
+
+                        if (data.answer) {
+                            messageText.innerHTML = marked.parse(data.answer);
+                            msg.querySelectorAll('a').forEach(link => {
+                                link.setAttribute('target', '_blank');
+                                link.setAttribute('rel', 'noopener noreferrer');
+                            });
+
+                            const activeChatItem = document.querySelector(`[data-chat-id="${currentChatId}"]`);
+                            if (activeChatItem) chatHistory.prepend(activeChatItem);
+                        } else {
+                            messageText.innerHTML = originalHTML;
+                        }
+                    } catch (error) {
+                        console.error('Regenerate failed:', error);
+                        messageText.innerHTML = originalHTML;
+                    }
+
+                    this.disabled = false;
+                    icon.style.animation = '';
+                });
             }
         });
     }
