@@ -229,6 +229,14 @@ def change_username():
     data = request.get_json()
     new_username = data.get("username", "").strip()
 
+    # get current username for this user
+    mycursor.execute("SELECT username FROM users WHERE user_id = %s", (user_id,))
+    user_row = mycursor.fetchone()
+    current_username = user_row[0]
+
+    if new_username == current_username:
+        return jsonify({"error": "New username must be different from current username"}), 400
+
     username_error = validate_username(new_username)
     if username_error:
         return jsonify({"error": username_error}), 400
@@ -245,6 +253,14 @@ def change_email():
 
     data = request.get_json()
     new_email = data.get("email", "").strip()
+
+    # get current username for this user
+    mycursor.execute("SELECT emailaddress FROM users WHERE user_id = %s", (user_id,))
+    user_row = mycursor.fetchone()
+    current_email = user_row[0]
+
+    if new_email == current_email:
+        return jsonify({"error": "New email must be different from current email"}), 400
 
     email_error = validate_email(new_email)
     if email_error:
