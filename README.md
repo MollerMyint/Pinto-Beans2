@@ -268,6 +268,7 @@ Pinto-Beans2/
 │   │   ├── BillyBronco.png
 │   │   └── CPP.png
 │   └── templates/
+│       ├── 404.html
 │       ├── account.html
 │       ├── index.html
 │       ├── login.html

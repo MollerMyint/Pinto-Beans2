@@ -47,6 +47,10 @@ s = os.getenv("SALT")
 def home():
     return render_template("login.html")
 
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template("404.html"), 404
+
 @app.route('/account')
 def account():
     user_id = session.get("user_id")
@@ -61,6 +65,9 @@ def account():
 @app.route('/chatUI')
 def chatUI():
     user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/")
+
     mycursor.execute("SELECT username FROM users WHERE user_id = %s", (user_id,))
     result = mycursor.fetchone()
     username = result[0] if result else "User"
@@ -111,11 +118,12 @@ def ask_question():
 
     # save the new Q&A to the messages table
     mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+    message_id = mycursor.lastrowid #row ID
     # update last activity time
     mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
     mydb.commit()
 
-    return jsonify({"answer": answer, "chat_id": chat_id})
+    return jsonify({"answer": answer, "chat_id": chat_id, "message_id": message_id})
 
 @app.route('/new/chat', methods=['POST'])
 def new_chat():
@@ -146,9 +154,10 @@ def new_chat():
         mycursor.execute("INSERT INTO chats (user_id, title) VALUES (%s, %s)", (user_id, title))
         chat_id = mycursor.lastrowid  # get the ID of the newly created chat
         mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+        message_id = mycursor.lastrowid #row ID
         mydb.commit()  # Save the new row in the database
 
-        return jsonify({"chat_id": chat_id, "title": title, "answer": answer})
+        return jsonify({"chat_id": chat_id, "title": title, "answer": answer, "message_id": message_id})
 
     except Exception as e:
         print("new_chat error:", e)
@@ -199,9 +208,11 @@ def change_chat(message_id):
     
     data = request.get_json()
     new_question = data.get("question")
+    new_prompt = new_question + "Please provide a fresh response to this question. Be thorough and include any additional relevant details or resources that may be helpful."
+    print(new_prompt)
 
-    agent_executor = create_agent(include_title_tool=True)
-    response = agent_executor.invoke({"input": new_question, "chat_history": []})  # Use the function from agent.py to get the response
+    agent_executor = create_agent()
+    response = agent_executor.invoke({"input": new_prompt, "chat_history": []})
     new_answer = response['output']
 
     mycursor.execute("SELECT chat_id FROM messages WHERE message_id = %s",(message_id,))
@@ -225,12 +236,17 @@ def change_username():
     data = request.get_json()
     new_username = data.get("username", "").strip()
 
-    if not new_username:
-        return jsonify({"error": "Username cannot be empty"}), 400
+    # get current username for this user
+    mycursor.execute("SELECT username FROM users WHERE user_id = %s", (user_id,))
+    user_row = mycursor.fetchone()
+    current_username = user_row[0]
 
-    mycursor.execute("SELECT user_id FROM users WHERE username = %s", (new_username,))
-    if mycursor.fetchone():
-        return jsonify({"error": "That username is already taken"}), 409
+    if new_username == current_username:
+        return jsonify({"error": "New username must be different from current username"}), 400
+
+    username_error = validate_username(new_username)
+    if username_error:
+        return jsonify({"error": username_error}), 400
 
     mycursor.execute("UPDATE users SET username = %s WHERE user_id = %s", (new_username, user_id))
     mydb.commit()
@@ -245,13 +261,17 @@ def change_email():
     data = request.get_json()
     new_email = data.get("email", "").strip()
 
+    # get current username for this user
+    mycursor.execute("SELECT emailaddress FROM users WHERE user_id = %s", (user_id,))
+    user_row = mycursor.fetchone()
+    current_email = user_row[0]
+
+    if new_email == current_email:
+        return jsonify({"error": "New email must be different from current email"}), 400
+
     email_error = validate_email(new_email)
     if email_error:
         return jsonify({"error": email_error}), 400
-
-    mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (new_email,))
-    if mycursor.fetchone():
-        return jsonify({"error": "An account with that email already exists"}), 409
 
     mycursor.execute("UPDATE users SET emailaddress = %s WHERE user_id = %s", (new_email, user_id))
     mydb.commit()
@@ -340,22 +360,9 @@ def signup():
             email = request.form['email']
             password = request.form['password']
 
-            mycursor.execute("SELECT username, emailaddress FROM users WHERE username = %s OR emailaddress = %s", (username, email))
-            existing = mycursor.fetchall()
-
-            username_error = None
-            email_error = None
-
-            # check for dupilcate username or email
-            for row in existing:
-                if row[0] == username:
-                    username_error = "That username is already taken"
-                if row[1] == email:
-                    email_error = "An account with that email already exists"
-
-            # validate email format
-            if not is_valid_email(email):
-                email_error = "Please enter a valid email address"
+            # validate email and username
+            username_error = validate_username(username)
+            email_error = validate_email(email)
 
             if username_error or email_error:
                 # pass back username and email so fields dont clear when error is present
@@ -424,11 +431,24 @@ def validate_password(old_password, new_password, confirm_password, stored_hash)
         return "New password must be different from old password"
     return None
 
+def validate_username(username):
+    if not username:
+        return "Username cannot be empty"
+    
+    mycursor.execute("SELECT user_id FROM users WHERE username = %s", (username,))
+    if mycursor.fetchone():
+        return "An account with that username already exists"
+    return None
+    
 def validate_email(email):
     if not email:
         return "Email cannot be empty"
     if not is_valid_email(email):
         return "Please enter a valid email address"
+    
+    mycursor.execute("SELECT user_id FROM users WHERE emailaddress = %s", (email,))
+    if mycursor.fetchone():
+        return "An account with that email already exists"
     return None
 
 def is_valid_email(email):

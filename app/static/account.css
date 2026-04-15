@@ -172,8 +172,8 @@ body {
 }
 
 .edit-btn:hover {
-    background: rgba(165, 213, 92, 0.15);
-    color: #005030;
+    background: rgba(255, 184, 29, 0.15);
+    color: #FFB81D;
 }
 
 .edit-btn .material-symbols-outlined {
