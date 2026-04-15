@@ -59,17 +59,17 @@
             </div>
             <h4>Please fill in your information</h4>
             <form method="POST" action="/signup" id="signup-form">
-            <input type="text" name="username" id="username" placeholder="Username" value="{{ username or '' }}">
-            <p id="username-frontend-error" style="color: #dc2626; font-size: 13px; margin: -10px 0 8px 0; text-align: center;"></p>
-            {% if username_error %}
-                <p class="error">{{username_error}}</p>
-            {% endif %}
+                <input type="text" name="username" id="username" placeholder="Username" value="{{ username or '' }}">
+                <p id="username-frontend-error" style="color: #dc2626; font-size: 13px; margin: -10px 0 8px 0; text-align: center;"></p>
+                {% if username_error %}
+                    <p class="error" id="username-backend-error">{{username_error}}</p>
+                {% endif %}
 
-            <input type="text" name="email" id="email" placeholder="Email Address" value="{{ email or '' }}">
-            <p id="email-frontend-error" style="color: #dc2626; font-size: 13px; margin: -10px 0 8px 0; text-align: center;"></p>
-            {% if email_error %}
-                <p class="error">{{email_error}}</p>
-            {% endif %}
+                <input type="text" name="email" id="email" placeholder="Email Address" value="{{ email or '' }}">
+                <p id="email-frontend-error" style="color: #dc2626; font-size: 13px; margin: -10px 0 8px 0; text-align: center;"></p>
+                {% if email_error %}
+                    <p class="error" id="email-backend-error">{{email_error}}</p>
+                {% endif %}
 
                 <div class="password-wrapper">
                     <input type="password" name="password" id="password" placeholder="Password">
@@ -101,7 +101,6 @@
                 <p id="password-error-msg" style="display: none; color: #dc2626; font-size: 13px; margin: -4px 0 12px 0; text-align: center;">
                     One or more password requirements not met
                 </p>
-
 
                 {% if error %}
                     <p class="error">{{error}}</p>
@@ -155,15 +154,30 @@
                 checkRequirement(reqUpper,   /[A-Z]/.test(val));
                 checkRequirement(reqNumber,  /[0-9]/.test(val));
                 checkRequirement(reqSpecial, /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val));
+                // Clear password error as user types
+                document.getElementById('password-error-msg').style.display = 'none';
             });
 
-            // TRIM ALL FIELDS ON SUBMIT
+            // CLEAR ERRORS AS USER TYPES
+            document.getElementById('username').addEventListener('input', function() {
+                document.getElementById('username-frontend-error').textContent = '';
+                const backendErr = document.getElementById('username-backend-error');
+                if (backendErr) backendErr.textContent = '';
+            });
+
+            document.getElementById('email').addEventListener('input', function() {
+                document.getElementById('email-frontend-error').textContent = '';
+                const backendErr = document.getElementById('email-backend-error');
+                if (backendErr) backendErr.textContent = '';
+            });
+
+            // FORM SUBMIT VALIDATION
             document.getElementById('signup-form').addEventListener('submit', function(e) {
                 const username = document.getElementById('username');
                 const email    = document.getElementById('email');
                 const password = document.getElementById('password');
 
-                // Trim FIRST before validating
+                // Trim first before validating
                 username.value = username.value.trim();
                 email.value    = email.value.trim();
                 password.value = password.value.trim();
@@ -177,7 +191,6 @@
 
                 const passwordErrorMsg = document.getElementById('password-error-msg');
 
-                // Check all fields
                 let hasError = false;
 
                 // Username validation
