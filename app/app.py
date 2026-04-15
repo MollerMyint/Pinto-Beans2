@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify, session, redirect
 from langchain_core.messages import HumanMessage, AIMessage
-from agent.agent import create_agent
+from agent.agent import create_agent, get_sbert_model, load_sbert_index
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -190,6 +190,33 @@ def change_title(chat_id):
     mydb.commit()
 
     return jsonify({"chat_id": chat_id, "title": new_title})
+
+@app.route('/change/message/<int:message_id>', methods=["PUT"])
+def change_chat(message_id):
+    # user_id = session.get("user_id")
+    # if not user_id:
+    #     return jsonify({"error": "Not logged in"}), 401
+    
+    data = request.get_json()
+    new_question = data.get("question")
+    new_prompt = new_question + " Please expand on this more and change up the wording."
+    print(new_prompt)
+
+    agent_executor = create_agent()
+    response = agent_executor.invoke({"input": new_question, "chat_history": []})  # Use the function from agent.py to get the response
+    new_answer = response['output']
+
+    mycursor.execute("SELECT chat_id FROM messages WHERE message_id = %s",(message_id,))
+    row = mycursor.fetchone()
+    if not row:
+        return jsonify({"error": "Message not found"}), 404
+    chat_id = row[0]
+
+    mycursor.execute("UPDATE messages SET question = %s, answer = %s WHERE message_id = %s", (new_question, new_answer, message_id))
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
+    mydb.commit()
+
+    return jsonify({"message_id": message_id, "answer": new_answer, "question": new_question})
 
 @app.route('/change/username', methods=['PUT'])
 def change_username():
@@ -410,8 +437,21 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 
+def preload_sbert_resources():
+    """
+    Warm SBERT resources once at process startup so request-time latency is lower.
+    """
+    try:
+        get_sbert_model()
+        load_sbert_index()
+        print("SBERT model and embedding index preloaded.")
+    except Exception as e:
+        # Keep server boot resilient; agent tools still return graceful fallback messages.
+        print(f"SBERT preload skipped: {e}")
+
 def main():
     print("Starting Flask server...")
+    preload_sbert_resources()
 
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
