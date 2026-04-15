@@ -111,11 +111,12 @@ def ask_question():
 
     # save the new Q&A to the messages table
     mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+    message_id = mycursor.lastrowid #row ID
     # update last activity time
     mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
     mydb.commit()
 
-    return jsonify({"answer": answer, "chat_id": chat_id})
+    return jsonify({"answer": answer, "chat_id": chat_id, "message_id": message_id})
 
 @app.route('/new/chat', methods=['POST'])
 def new_chat():
@@ -146,9 +147,10 @@ def new_chat():
         mycursor.execute("INSERT INTO chats (user_id, title) VALUES (%s, %s)", (user_id, title))
         chat_id = mycursor.lastrowid  # get the ID of the newly created chat
         mycursor.execute("INSERT INTO messages (chat_id, question, answer) VALUES (%s, %s, %s)",(chat_id, question, answer,))
+        message_id = mycursor.lastrowid #row ID
         mydb.commit()  # Save the new row in the database
 
-        return jsonify({"chat_id": chat_id, "title": title, "answer": answer})
+        return jsonify({"chat_id": chat_id, "title": title, "answer": answer, "message_id": message_id})
 
     except Exception as e:
         print("new_chat error:", e)
@@ -193,9 +195,9 @@ def change_title(chat_id):
 
 @app.route('/change/message/<int:message_id>', methods=["PUT"])
 def change_chat(message_id):
-    # user_id = session.get("user_id")
-    # if not user_id:
-    #     return jsonify({"error": "Not logged in"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
     
     data = request.get_json()
     new_question = data.get("question")
@@ -203,7 +205,7 @@ def change_chat(message_id):
     print(new_prompt)
 
     agent_executor = create_agent()
-    response = agent_executor.invoke({"input": new_question, "chat_history": []})  # Use the function from agent.py to get the response
+    response = agent_executor.invoke({"input": new_prompt, "chat_history": []})
     new_answer = response['output']
 
     mycursor.execute("SELECT chat_id FROM messages WHERE message_id = %s",(message_id,))
