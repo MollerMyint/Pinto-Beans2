@@ -5,6 +5,17 @@ This project is a Cal Poly Pomona campus knowledge assistant. It answers questio
 - a web app with login/chat history
 - a Discord bot with short-term session memory only
 
+### Web App
+
+Visit the web app here:  
+https://pinto-beans2.onrender.com/
+
+**NOTE:** The website may take a little time to load when first opened. The website must be running and fully loaded for the Discord bot to work properly.
+
+### Discord Bot
+
+To send a DM to the bot, first join the server [HERE](https://discord.gg/PEBfDy7r9q)
+
 ## Architecture and Logic
 
 ### High-level architecture
@@ -237,8 +248,6 @@ python -m app.app
 
 - The web/backend app must be running before the Discord bot can answer questions.
 - The default port in this project is `5001`.
-- [Invite to the bot on Discord](https://discord.gg/PEBfDy7r9q)
-
 ## Project Tree
 
 ```text
