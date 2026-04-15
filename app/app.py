@@ -201,7 +201,7 @@ def change_chat(message_id):
     
     data = request.get_json()
     new_question = data.get("question")
-    new_prompt = new_question + " Please expand on this more and change up the wording."
+    new_prompt = new_question + "Please provide a fresh response to this question. Be thorough and include any additional relevant details or resources that may be helpful."
     print(new_prompt)
 
     agent_executor = create_agent()
