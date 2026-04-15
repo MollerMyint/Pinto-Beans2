@@ -224,7 +224,6 @@ def change_chat(message_id):
         "- Starts differently than your previous answer\n"
         "- Covers different aspects or details you did not mention before\n"
         "- Uses a different structure and format\n"
-        "- Adds new examples, resources, or context not in the previous answer"
     )
     print(new_prompt)
 
