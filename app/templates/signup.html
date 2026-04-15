@@ -5,6 +5,7 @@
         <link rel="stylesheet" href="{{url_for('static', filename='auth.css')}}">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>">
 
         <style>
             body {
@@ -54,18 +55,20 @@
         <div class="auth-container">
             <div class="auth-header">
                 <span class="auth-logo">🫘</span>
-                <h2>New? Create an account!</h2>
+                <h2>Create an account!</h2>
             </div>
             <h4>Please fill in your information</h4>
             <form method="POST" action="/signup" id="signup-form">
                 <input type="text" name="username" id="username" placeholder="Username" value="{{ username or '' }}">
+                <p id="username-frontend-error" style="color: #dc2626; font-size: 13px; margin: -10px 0 8px 0; text-align: center;"></p>
                 {% if username_error %}
-                    <p class="error">{{username_error}}</p>
+                    <p class="error" id="username-backend-error">{{username_error}}</p>
                 {% endif %}
 
                 <input type="text" name="email" id="email" placeholder="Email Address" value="{{ email or '' }}">
+                <p id="email-frontend-error" style="color: #dc2626; font-size: 13px; margin: -10px 0 8px 0; text-align: center;"></p>
                 {% if email_error %}
-                    <p class="error">{{email_error}}</p>
+                    <p class="error" id="email-backend-error">{{email_error}}</p>
                 {% endif %}
 
                 <div class="password-wrapper">
@@ -98,7 +101,6 @@
                 <p id="password-error-msg" style="display: none; color: #dc2626; font-size: 13px; margin: -4px 0 12px 0; text-align: center;">
                     One or more password requirements not met
                 </p>
-
 
                 {% if error %}
                     <p class="error">{{error}}</p>
@@ -152,36 +154,80 @@
                 checkRequirement(reqUpper,   /[A-Z]/.test(val));
                 checkRequirement(reqNumber,  /[0-9]/.test(val));
                 checkRequirement(reqSpecial, /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val));
+                // Clear password error as user types
+                document.getElementById('password-error-msg').style.display = 'none';
             });
 
-            // TRIM ALL FIELDS ON SUBMIT
+            // CLEAR ERRORS AS USER TYPES
+            document.getElementById('username').addEventListener('input', function() {
+                document.getElementById('username-frontend-error').textContent = '';
+                const backendErr = document.getElementById('username-backend-error');
+                if (backendErr) backendErr.textContent = '';
+            });
+
+            document.getElementById('email').addEventListener('input', function() {
+                document.getElementById('email-frontend-error').textContent = '';
+                const backendErr = document.getElementById('email-backend-error');
+                if (backendErr) backendErr.textContent = '';
+            });
+
+            // FORM SUBMIT VALIDATION
             document.getElementById('signup-form').addEventListener('submit', function(e) {
                 const username = document.getElementById('username');
                 const email    = document.getElementById('email');
                 const password = document.getElementById('password');
 
-                // Trim FIRST before validating
+                // Trim first before validating
                 username.value = username.value.trim();
                 email.value    = email.value.trim();
                 password.value = password.value.trim();
 
-                const val = password.value;  // use trimmed value for checks
+                const val = password.value;
                 const meetsLength  = val.length >= 8;
                 const meetsUpper   = /[A-Z]/.test(val);
                 const meetsNumber  = /[0-9]/.test(val);
                 const meetsSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val);
+                const passwordValid = meetsLength && meetsUpper && meetsNumber && meetsSpecial;
+
                 const passwordErrorMsg = document.getElementById('password-error-msg');
 
-                if (!meetsLength || !meetsUpper || !meetsNumber || !meetsSpecial) {
-                    e.preventDefault();
+                let hasError = false;
+
+                // Username validation
+                const usernameError = document.getElementById('username-frontend-error');
+                if (!username.value) {
+                    usernameError.textContent = 'Username cannot be empty';
+                    hasError = true;
+                } else {
+                    usernameError.textContent = '';
+                }
+
+                // Email validation
+                const emailError = document.getElementById('email-frontend-error');
+                const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (!email.value) {
+                    emailError.textContent = 'Email cannot be empty';
+                    hasError = true;
+                } else if (!emailPattern.test(email.value)) {
+                    emailError.textContent = 'Please enter a valid email address';
+                    hasError = true;
+                } else {
+                    emailError.textContent = '';
+                }
+
+                // Password validation
+                if (!passwordValid) {
                     document.getElementById('req-length').classList.toggle('met', meetsLength);
                     document.getElementById('req-upper').classList.toggle('met', meetsUpper);
                     document.getElementById('req-number').classList.toggle('met', meetsNumber);
                     document.getElementById('req-special').classList.toggle('met', meetsSpecial);
                     passwordErrorMsg.style.display = 'block';
+                    hasError = true;
                 } else {
                     passwordErrorMsg.style.display = 'none';
                 }
+
+                if (hasError) e.preventDefault();
             });
         </script>
     </body>

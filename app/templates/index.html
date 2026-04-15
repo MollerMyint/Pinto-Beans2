@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫘</text></svg>">
 </head>
 <body>
     <!-- ======APP LAYOUT====== -->
@@ -245,6 +246,7 @@
 
     // Tracks the last question asked so the regenerate button can re-send it
     let lastQuestion = null;
+    let lastMessageId = null;
 
     // LANDING --> CHAT TRANSITIONS
     // exitLanding — fades out the landing view --> shows the chat UI
@@ -454,7 +456,9 @@
         chatItem.innerHTML = `
             <span class="chat-icon material-symbols-outlined">chat</span>
             <span class="chat-name">${title}</span>
-            <button class="chat-options-btn">⋮</button>
+            <button class="chat-options-btn">
+                <span class="material-symbols-outlined">more_vert</span>
+            </button>
             <div class="chat-options-menu">
                 <button class="option-rename">
                     <span class="material-symbols-outlined">edit</span>
@@ -479,10 +483,10 @@
     // user or bot. Bot messages are parsed through
     // marked.js to render markdown (bold, lists,
     // links) and include copy + regenerate buttons
-    function addMessage(text, sender) {
-        const messageDiv      = document.createElement('div');
-        messageDiv.className  = `message ${sender}-message`;
-        const parsedText      = marked.parse(text);
+        function addMessage(text, sender) {
+        const messageDiv     = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        const parsedText     = marked.parse(text);
 
         if (sender === 'bot') {
             messageDiv.innerHTML = `
@@ -516,7 +520,7 @@
 
             // Regenerate button: re-sends the last question to the API and replaces this message's content with the new response
             messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
-                if (!currentChatId || !lastQuestion) return;
+                if (!currentChatId || !lastQuestion || !lastMessageId) return;
 
                 this.disabled = true;
                 const icon = this.querySelector('.material-symbols-outlined');
@@ -541,10 +545,10 @@
                     </div>`;
 
                 try {
-                    const response = await fetch('/ask', {
-                        method: 'POST',
+                    const response = await fetch(`/change/message/${lastMessageId}`, {
+                        method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ question: lastQuestion, chat_id: currentChatId })
+                        body: JSON.stringify({ question: lastQuestion })
                     });
                     const data = await response.json();
 
@@ -557,11 +561,11 @@
                             link.setAttribute('rel', 'noopener noreferrer');
                         });
                     } else {
-                        messageText.innerHTML = originalHTML; // restore on error
+                        messageText.innerHTML = originalHTML;
                     }
                 } catch (error) {
                     console.error('Regenerate failed:', error);
-                    messageText.innerHTML = originalHTML; // restore on error
+                    messageText.innerHTML = originalHTML;
                 }
 
                 this.disabled        = false;
@@ -574,6 +578,25 @@
 
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Disable all regenerate buttons except last one
+        if (sender === 'bot') updateRegenerateButtons();
+    }
+
+    // Disable all regenerate buttons except the most recent one
+    function updateRegenerateButtons() {
+        const allRegenBtns = chatMessages.querySelectorAll('.regenerate-btn');
+        allRegenBtns.forEach((btn, index) => {
+            if (index < allRegenBtns.length - 1) {
+                btn.disabled       = true;
+                btn.style.opacity  = '0.3';
+                btn.style.cursor   = 'not-allowed';
+            } else {
+                btn.disabled       = false;
+                btn.style.opacity  = '';
+                btn.style.cursor   = '';
+            }
+        });
     }
 
     // CHAT ITEM LISTENERS
@@ -583,7 +606,7 @@
     function attachChatItemListeners(chatItem) {
         // Click the row to load that chat
         chatItem.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('chat-options-btn') &&
+            if (!e.target.closest('.chat-options-btn') &&
                 !e.target.closest('.chat-options-menu')) {
                 const chatId   = parseInt(this.dataset.chatId);
                 const chatName = this.querySelector('.chat-name').textContent;
@@ -664,9 +687,10 @@
                 addMessage(msg.answer, 'bot');
             });
 
-            // Set lastQuestion to the most recent question in the chat
+            // Set lastQuestion and lastMessageId to the most recent message
             if (data.messages.length > 0) {
-                lastQuestion = data.messages[data.messages.length - 1].question;
+                lastQuestion  = data.messages[data.messages.length - 1].question;
+                lastMessageId = data.messages[data.messages.length - 1].message_id;
             }
 
             if (data.messages.length === 0) {
@@ -703,13 +727,12 @@
         lastQuestion = question;
         addMessage(question, 'user');
 
-        input.value       = '';
+        input.value        = '';
         input.style.height = 'auto';
 
-        // Show the animated thinking loader while waiting for a response
-        const loadingMessage      = document.createElement('div');
-        loadingMessage.className  = 'message bot-message';
-        loadingMessage.innerHTML  = `
+        const loadingMessage     = document.createElement('div');
+        loadingMessage.className = 'message bot-message';
+        loadingMessage.innerHTML = `
         <div class="loader-wrapper">
             <div class="loader"></div>
             <div class="letter-wrapper">
@@ -738,26 +761,28 @@
 
                 currentChatId          = data.chat_id;
                 chatHeader.textContent = data.title;
+                lastMessageId          = data.message_id;
                 addChatToSidebar(data.chat_id, data.title, true);
                 document.querySelector(`[data-chat-id="${data.chat_id}"]`)?.classList.add('active');
 
                 loadingMessage.remove();
                 addMessage(data.answer, 'bot');
 
-        } else {
-            const response = await fetch('/ask', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, chat_id: currentChatId })
-            });
-            const data = await response.json();
-            loadingMessage.remove();
-            addMessage(data.answer, 'bot');
+            } else {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, chat_id: currentChatId })
+                });
+                const data = await response.json();
+                loadingMessage.remove();
+                addMessage(data.answer, 'bot');
+                lastMessageId = data.message_id;
 
             // Move active chat to top of sidebar
-            const activeChatItem = document.querySelector(`[data-chat-id="${currentChatId}"]`);
-            if (activeChatItem) chatHistory.prepend(activeChatItem);
-        }
+                const activeChatItem = document.querySelector(`[data-chat-id="${currentChatId}"]`);
+                if (activeChatItem) chatHistory.prepend(activeChatItem);
+            }
         } catch (error) {
             loadingMessage.textContent = 'Something went wrong. Please try again.';
             console.error(error);

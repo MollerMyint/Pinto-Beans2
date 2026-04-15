@@ -537,10 +537,18 @@ body {
     color: #FFFFFF;
     font-size: 20px;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 4px;
     border-radius: 4px;
     opacity: 0;
     transition: opacity 0.2s ease, background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-options-btn .material-symbols-outlined {
+    font-size: 20px;
+    font-variation-settings: 'wght' 300;
 }
 
 /* Show the button only when hovering the row */
@@ -550,6 +558,8 @@ body {
 
 .chat-options-btn:hover {
     background: rgba(255, 184, 29, 0.2);
+    color: #FFB81D;
+
 }
 
 /* Dark green color for options button on active chat */
