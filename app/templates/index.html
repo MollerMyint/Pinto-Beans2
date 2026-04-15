@@ -386,16 +386,15 @@
             const title  = item.querySelector('.chat-name').textContent;
             const chatId = item.dataset.chatId;
 
-            // Check if title starts w query (case-insensitive)
-            if (!q || title.toLowerCase().startsWith(q)) {
+            // Check if the title contains the query
+            if (!q || title.toLowerCase().includes(q)) {
                 let displayTitle = title;
                 
                 // Only highlight if there's a search query
                 if (q && q.length > 0) {
                     const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    // Match only at the START of the string (^)
-                    const regex = new RegExp(`^(${escapedQuery})`, 'i');
-                    // Replace match with highlighted version
+                    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                    // Replace matches highlighted version
                     displayTitle = title.replace(regex, '<mark>$1</mark>');
                 }
 
@@ -418,6 +417,7 @@
         searchResults.querySelectorAll('.search-result-item').forEach(el => {
             el.addEventListener('click', function() {
                 const chatId   = parseInt(this.dataset.chatId);
+                // Get text content without HTML tags
                 const chatNameEl = this.querySelector('.search-result-text');
                 const chatName = chatNameEl ? chatNameEl.textContent : this.textContent.trim().replace('chat', '').trim();
                 closeSearch();
