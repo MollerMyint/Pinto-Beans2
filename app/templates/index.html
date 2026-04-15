@@ -386,15 +386,23 @@
             const title  = item.querySelector('.chat-name').textContent;
             const chatId = item.dataset.chatId;
 
-            if (!q || title.toLowerCase().includes(q)) {
-                const highlighted = q
-                    ? title.replace(new RegExp(`(${q})`, 'gi'), '<mark>$1</mark>')
-                    : title;
+            // Check if title starts w query (case-insensitive)
+            if (!q || title.toLowerCase().startsWith(q)) {
+                let displayTitle = title;
+                
+                // Only highlight if there's a search query
+                if (q && q.length > 0) {
+                    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    // Match only at the START of the string (^)
+                    const regex = new RegExp(`^(${escapedQuery})`, 'i');
+                    // Replace match with highlighted version
+                    displayTitle = title.replace(regex, '<mark>$1</mark>');
+                }
 
                 html += `
                     <div class="search-result-item" data-chat-id="${chatId}">
                         <span class="material-symbols-outlined">chat</span>
-                        ${highlighted}
+                        <span class="search-result-text">${displayTitle}</span>
                     </div>`;
                 count++;
             }
@@ -410,7 +418,8 @@
         searchResults.querySelectorAll('.search-result-item').forEach(el => {
             el.addEventListener('click', function() {
                 const chatId   = parseInt(this.dataset.chatId);
-                const chatName = this.textContent.trim();
+                const chatNameEl = this.querySelector('.search-result-text');
+                const chatName = chatNameEl ? chatNameEl.textContent : this.textContent.trim().replace('chat', '').trim();
                 closeSearch();
                 loadChat(chatId, chatName);
             });
