@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, jsonify, session, redirect
 from langchain_core.messages import HumanMessage, AIMessage
-from agent.agent import create_agent, get_sbert_model, load_sbert_index
+#from agent.agent import create_agent, get_sbert_model, load_sbert_index
+from agent.agent import create_agent
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -452,7 +453,7 @@ def is_valid_email(email):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
 
-def preload_sbert_resources():
+#def preload_sbert_resources():
     """
     Warm SBERT resources once at process startup so request-time latency is lower.
     """
@@ -466,7 +467,7 @@ def preload_sbert_resources():
 
 def main():
     print("Starting Flask server...")
-    preload_sbert_resources()
+    #preload_sbert_resources()
 
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 
