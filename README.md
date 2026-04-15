@@ -214,7 +214,6 @@ SALT=your_random_salt_string
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 DISCORD_AGENT_API_URL=http://127.0.0.1:5001/discord/ask
 #DISCORD_AGENT_API_URL should point to your local backend address followed by /discord/ask.
-#For local testing, this is usually http://127.0.0.1:5001/discord/ask or http://localhost:5001/discord/ask.
 ```
 
 > This file is required for the app to connect to the database and run properly.
