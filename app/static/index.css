@@ -712,8 +712,8 @@ body {
 
 .cancel-btn { background: #e5e7eb; color: #374151; }
 .cancel-btn:hover { background: #d1d5db; }
-.confirm-btn { background: #B52C4C; color: #ffffff; }
-.confirm-btn:hover { background: #9b2440; }
+.confirm-btn { background: #A5D55C; color: #005030; }
+.confirm-btn:hover { background: #92c44a; }
 
 .popup-input {
     width: 100%;

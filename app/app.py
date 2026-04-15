@@ -208,21 +208,31 @@ def change_chat(message_id):
     
     data = request.get_json()
     new_question = data.get("question")
-    new_prompt = new_question + "Please provide a fresh response to this question. Be thorough and include any additional relevant details or resources that may be helpful."
+
+    mycursor.execute("SELECT chat_id, answer FROM messages WHERE message_id = %s", (message_id,))
+    row = mycursor.fetchone()
+    if not row:
+        return jsonify({"error": "Message not found"}), 404
+    chat_id, previous_answer = row
+
+    new_prompt = (
+        "IMPORTANT: You must not repeat or rephrase your previous answer. "
+        "You must take a completely different approach.\n\n"
+        f"Question: {new_question}\n\n"
+        f"Your previous answer (DO NOT repeat this): {previous_answer}\n\n"
+        "Now give a new response that:\n"
+        "- Starts differently than your previous answer\n"
+        "- Covers different aspects or details you did not mention before\n"
+        "- Uses a different structure and format\n"
+    )
     print(new_prompt)
 
     agent_executor = create_agent()
     response = agent_executor.invoke({"input": new_prompt, "chat_history": []})
     new_answer = response['output']
 
-    mycursor.execute("SELECT chat_id FROM messages WHERE message_id = %s",(message_id,))
-    row = mycursor.fetchone()
-    if not row:
-        return jsonify({"error": "Message not found"}), 404
-    chat_id = row[0]
-
     mycursor.execute("UPDATE messages SET question = %s, answer = %s WHERE message_id = %s", (new_question, new_answer, message_id))
-    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s",(chat_id,))
+    mycursor.execute("UPDATE chats SET created_at = CURRENT_TIMESTAMP WHERE chat_id = %s", (chat_id,))
     mydb.commit()
 
     return jsonify({"message_id": message_id, "answer": new_answer, "question": new_question})
