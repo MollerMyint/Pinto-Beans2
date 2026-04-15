@@ -25,10 +25,12 @@ body {
     margin-bottom: 10px;
 }
 
-/* Bean logo beside the title */
+/* Bean bounce */
 .auth-logo {
     font-size: 2.4rem;
     flex-shrink: 0;
+    display: block;
+    margin-bottom: 8px;
     animation: beanBounce 2.4s ease-in-out infinite;
 }
 
