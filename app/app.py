@@ -65,6 +65,9 @@ def account():
 @app.route('/chatUI')
 def chatUI():
     user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/")
+
     mycursor.execute("SELECT username FROM users WHERE user_id = %s", (user_id,))
     result = mycursor.fetchone()
     username = result[0] if result else "User"
