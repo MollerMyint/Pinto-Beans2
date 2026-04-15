@@ -237,14 +237,26 @@
             document.getElementById('password-error').textContent = '';
             const newPwd = this.value;
             const confirmPwd = document.getElementById('confirm-password').value;
-            checkPasswordRequirements(newPwd, confirmPwd);
+            
+            // If both fields are empty, reset to gray
+            if (newPwd === '' && confirmPwd === '') {
+                resetPasswordRequirements();
+            } else {
+                checkPasswordRequirements(newPwd, confirmPwd);
+            }
         });
 
         document.getElementById('confirm-password').addEventListener('input', function() {
             document.getElementById('password-error').textContent = '';
             const newPwd = document.getElementById('new-password').value;
             const confirmPwd = this.value;
-            checkPasswordRequirements(newPwd, confirmPwd);
+            
+            // If both fields are empty, reset to gray
+            if (newPwd === '' && confirmPwd === '') {
+                resetPasswordRequirements();
+            } else {
+                checkPasswordRequirements(newPwd, confirmPwd);
+            }
         });
 
         // Save username
