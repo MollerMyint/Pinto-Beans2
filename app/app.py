@@ -193,14 +193,16 @@ def change_title(chat_id):
 
 @app.route('/change/message/<int:message_id>', methods=["PUT"])
 def change_chat(message_id):
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Not logged in"}), 401
+    # user_id = session.get("user_id")
+    # if not user_id:
+    #     return jsonify({"error": "Not logged in"}), 401
     
     data = request.get_json()
     new_question = data.get("question")
+    new_prompt = new_question + " Please expand on this more and change up the wording."
+    print(new_prompt)
 
-    agent_executor = create_agent(include_title_tool=True)
+    agent_executor = create_agent()
     response = agent_executor.invoke({"input": new_question, "chat_history": []})  # Use the function from agent.py to get the response
     new_answer = response['output']
 
