@@ -220,6 +220,33 @@
             });
         });
 
+        // Clear error messages when user starts typing
+        document.getElementById('new-username').addEventListener('input', function() {
+            document.getElementById('username-error').textContent = '';
+        });
+
+        document.getElementById('new-email').addEventListener('input', function() {
+            document.getElementById('email-error').textContent = '';
+        });
+
+        document.getElementById('old-password').addEventListener('input', function() {
+            document.getElementById('password-error').textContent = '';
+        });
+
+        document.getElementById('new-password').addEventListener('input', function() {
+            document.getElementById('password-error').textContent = '';
+            const newPwd = this.value;
+            const confirmPwd = document.getElementById('confirm-password').value;
+            checkPasswordRequirements(newPwd, confirmPwd);
+        });
+
+        document.getElementById('confirm-password').addEventListener('input', function() {
+            document.getElementById('password-error').textContent = '';
+            const newPwd = document.getElementById('new-password').value;
+            const confirmPwd = this.value;
+            checkPasswordRequirements(newPwd, confirmPwd);
+        });
+
         // Save username
         document.getElementById('save-username').addEventListener('click', async function() {
             const newUsername = document.getElementById('new-username').value.trim();
