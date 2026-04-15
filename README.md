@@ -1,5 +1,10 @@
 # Pinto-Beans2 - CPP AI Knowledge Agent (ITC 2026)
 
+### To clone the repository, use the following command:
+``` bash
+git clone https://github.com/MollerMyint/Pinto-Beans2.git
+```
+
 This project is a Cal Poly Pomona campus knowledge assistant. It answers questions using retrieved website corpus content (not freeform guessing), and supports both:
 - a terminal chatbot flow
 - a web app with login/chat history
