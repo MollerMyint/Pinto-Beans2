@@ -3,6 +3,7 @@
 This project is a Cal Poly Pomona campus knowledge assistant. It answers questions using retrieved website corpus content (not freeform guessing), and supports both:
 - a terminal chatbot flow
 - a web app with login/chat history
+- a Discord bot with short-term session memory only
 
 ## Architecture and Logic
 
