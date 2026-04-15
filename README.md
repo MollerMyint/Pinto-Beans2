@@ -3,6 +3,7 @@
 This project is a Cal Poly Pomona campus knowledge assistant. It answers questions using retrieved website corpus content (not freeform guessing), and supports both:
 - a terminal chatbot flow
 - a web app with login/chat history
+- a Discord bot with short-term session memory only
 
 ## Architecture and Logic
 
@@ -236,6 +237,7 @@ python -m app.app
 
 - The web/backend app must be running before the Discord bot can answer questions.
 - The default port in this project is `5001`.
+- [Invite to the bot on Discord](https://discord.gg/PEBfDy7r9q)
 
 ## Project Tree
 
@@ -266,6 +268,7 @@ Pinto-Beans2/
 │   │   ├── BillyBronco.png
 │   │   └── CPP.png
 │   └── templates/
+│       ├── 404.html
 │       ├── account.html
 │       ├── index.html
 │       ├── login.html
