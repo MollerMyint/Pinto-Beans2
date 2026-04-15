@@ -237,6 +237,7 @@ python -m app.app
 
 - The web/backend app must be running before the Discord bot can answer questions.
 - The default port in this project is `5001`.
+- [Invite to the bot on Discord](https://discord.gg/PEBfDy7r9q)
 
 ## Project Tree
 
