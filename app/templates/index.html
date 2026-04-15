@@ -244,10 +244,6 @@
     const accountPopup  = document.getElementById('account-popup');
     const popupLogoutBtn = document.getElementById('popup-logout-btn');
 
-    // Tracks the last question asked so the regenerate button can re-send it
-    let lastQuestion = null;
-    let lastMessageId = null;
-
     // LANDING --> CHAT TRANSITIONS
     // exitLanding — fades out the landing view --> shows the chat UI
     function exitLanding(firstQuestion) {
@@ -491,8 +487,8 @@
     // Renders a message bubble for either the
     // user or bot. Bot messages are parsed through
     // marked.js to render markdown (bold, lists,
-    // links) and include copy + regenerate buttons
-        function addMessage(text, sender) {
+    // links) and include a copy button.
+    function addMessage(text, sender) {
         const messageDiv     = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
         const parsedText     = marked.parse(text);
@@ -503,9 +499,6 @@
                 <div class="message-actions">
                     <button class="action-btn copy-btn" title="Copy">
                         <span class="material-symbols-outlined">content_copy</span>
-                    </button>
-                    <button class="action-btn regenerate-btn" title="Regenerate">
-                        <span class="material-symbols-outlined">replay</span>
                     </button>
                 </div>
             `;
@@ -527,85 +520,12 @@
                 });
             });
 
-            // Regenerate button: re-sends the last question to the API and replaces this message's content with the new response
-            messageDiv.querySelector('.regenerate-btn').addEventListener('click', async function() {
-                if (!currentChatId || !lastQuestion || !lastMessageId) return;
-
-                this.disabled = true;
-                const icon = this.querySelector('.material-symbols-outlined');
-                icon.style.animation = 'spin 1s linear infinite';
-
-                // Show loading state in the message bubble
-                const messageText = messageDiv.querySelector('.message-text');
-                const originalHTML = messageText.innerHTML;
-                messageText.innerHTML = `
-                    <div class="loader-wrapper">
-                        <div class="loader"></div>
-                        <div class="letter-wrapper">
-                            <span class="loader-letter">T</span>
-                            <span class="loader-letter">h</span>
-                            <span class="loader-letter">i</span>
-                            <span class="loader-letter">n</span>
-                            <span class="loader-letter">k</span>
-                            <span class="loader-letter">i</span>
-                            <span class="loader-letter">n</span>
-                            <span class="loader-letter">g</span>
-                        </div>
-                    </div>`;
-
-                try {
-                    const response = await fetch(`/change/message/${lastMessageId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ question: lastQuestion })
-                    });
-                    const data = await response.json();
-
-                    if (data.answer) {
-                        messageText.innerHTML = marked.parse(data.answer);
-
-                        // Re-apply new tab to any links in the regenerated response
-                        messageDiv.querySelectorAll('a').forEach(link => {
-                            link.setAttribute('target', '_blank');
-                            link.setAttribute('rel', 'noopener noreferrer');
-                        });
-                    } else {
-                        messageText.innerHTML = originalHTML;
-                    }
-                } catch (error) {
-                    console.error('Regenerate failed:', error);
-                    messageText.innerHTML = originalHTML;
-                }
-
-                this.disabled        = false;
-                icon.style.animation = '';
-            });
-
         } else {
             messageDiv.innerHTML = parsedText;
         }
 
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        // Disable all regenerate buttons except last one
-        if (sender === 'bot') updateRegenerateButtons();
-    }
-
-    // Disable all regenerate buttons except the most recent one
-    function updateRegenerateButtons() {
-        const allRegenBtns = chatMessages.querySelectorAll('.regenerate-btn');
-        allRegenBtns.forEach((btn, index) => {
-            if (index < allRegenBtns.length - 1) {
-                btn.disabled       = true;
-                btn.style.opacity  = '0.3';
-                btn.style.cursor   = 'not-allowed';
-            } else {
-                btn.disabled       = false;
-                btn.style.opacity  = '';
-                btn.style.cursor   = '';
-            }
-        });
     }
 
     // CHAT ITEM LISTENERS
@@ -696,12 +616,6 @@
                 addMessage(msg.answer, 'bot');
             });
 
-            // Set lastQuestion and lastMessageId to the most recent message
-            if (data.messages.length > 0) {
-                lastQuestion  = data.messages[data.messages.length - 1].question;
-                lastMessageId = data.messages[data.messages.length - 1].message_id;
-            }
-
             if (data.messages.length === 0) {
                 addMessage('Welcome to the BillyBeans Bot! Ask me a question.', 'bot');
             }
@@ -724,8 +638,7 @@
     });
 
     // FORM SUBMIT — SEND A MESSAGE
-    // Saves the question for regeneration, shows
-    // the thinking loader, then calls the backend.
+    // Shows the thinking loader, then calls the backend.
     // First message creates a new chat; subsequent
     // messages append to the existing one.
     form.addEventListener('submit', async function(e) {
@@ -733,7 +646,6 @@
         const question = input.value.trim();
         if (!question) return;
 
-        lastQuestion = question;
         addMessage(question, 'user');
 
         input.value        = '';
@@ -770,7 +682,6 @@
 
                 currentChatId          = data.chat_id;
                 chatHeader.textContent = data.title;
-                lastMessageId          = data.message_id;
                 addChatToSidebar(data.chat_id, data.title, true);
                 document.querySelector(`[data-chat-id="${data.chat_id}"]`)?.classList.add('active');
 
@@ -786,7 +697,6 @@
                 const data = await response.json();
                 loadingMessage.remove();
                 addMessage(data.answer, 'bot');
-                lastMessageId = data.message_id;
 
             // Move active chat to top of sidebar
                 const activeChatItem = document.querySelector(`[data-chat-id="${currentChatId}"]`);
